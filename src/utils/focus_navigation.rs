@@ -6,7 +6,7 @@ fn is_focusable(el: Node) -> bool {
     !el.matches(r#"[data-sh-disabled="true"]"#).unwrap()
 }
 
-fn get_next_focusable(nodes: NodeList, anchor: u32, direction: i32) -> Option<Node> {
+fn get_next_focusable(nodes: &NodeList, anchor: i32, direction: i32) -> Option<Node> {
     let mut current = anchor as i32 + direction;
     while current >= 0 && (current as u32) < nodes.length() {
         if is_focusable(nodes.get(current as u32).unwrap()) {
@@ -17,7 +17,7 @@ fn get_next_focusable(nodes: NodeList, anchor: u32, direction: i32) -> Option<No
     None
 }
 
-fn get_next_locked_focusable(nodes: NodeList, anchor: u32, direction: i32) -> Option<Node> {
+fn get_next_locked_focusable(nodes: NodeList, anchor: i32, direction: i32) -> Option<Node> {
     let mut current = anchor as i32 + direction;
     if direction == 1 && current == nodes.length() as i32 {
         current = 0;
@@ -43,7 +43,7 @@ fn get_next_locked_focusable(nodes: NodeList, anchor: u32, direction: i32) -> Op
 pub fn focus_next_continuous(nodes: NodeList, target_node: &HtmlElement) {
     for i in 0..nodes.length() {
         if &nodes.get(i).unwrap() == target_node.unchecked_ref() && i + 1 < nodes.length() {
-            if let Some(node) = get_next_focusable(nodes, i, 1) {
+            if let Some(node) = get_next_focusable(&nodes, i as i32, 1) {
                 let _ = node.unchecked_into::<HtmlElement>().focus();
             }
             break;
@@ -54,7 +54,7 @@ pub fn focus_next_continuous(nodes: NodeList, target_node: &HtmlElement) {
 pub fn focus_prev_continuous(nodes: NodeList, target_node: &HtmlElement) {
     for i in 0..nodes.length() {
         if &nodes.get(i).unwrap() == target_node.unchecked_ref() && i >= 1 {
-            if let Some(node) = get_next_focusable(nodes, i, -1) {
+            if let Some(node) = get_next_focusable(&nodes, i as i32, -1) {
                 let _ = node.unchecked_into::<HtmlElement>().focus();
             }
             break;
@@ -65,7 +65,7 @@ pub fn focus_prev_continuous(nodes: NodeList, target_node: &HtmlElement) {
 pub fn focus_next(nodes: NodeList, target_node: &HtmlElement) {
     for i in 0..nodes.length() {
         if &nodes.get(i).unwrap() == target_node.unchecked_ref() {
-            if let Some(node) = get_next_locked_focusable(nodes, i, 1) {
+            if let Some(node) = get_next_locked_focusable(nodes, i as i32, 1) {
                 let _ = node.unchecked_into::<HtmlElement>().focus();
             }
             break;
@@ -76,10 +76,58 @@ pub fn focus_next(nodes: NodeList, target_node: &HtmlElement) {
 pub fn focus_prev(nodes: NodeList, target_node: &HtmlElement) {
     for i in 0..nodes.length() {
         if &nodes.get(i).unwrap() == target_node.unchecked_ref() {
-            if let Some(node) = get_next_locked_focusable(nodes, i, -1) {
+            if let Some(node) = get_next_locked_focusable(nodes, i as i32, -1) {
                 let _ = node.unchecked_into::<HtmlElement>().focus();
             }
             break;
+        }
+    }
+}
+
+pub fn focus_first(nodes: NodeList) -> bool {
+    if nodes.length() > 0 {
+        if let Some(node) = get_next_focusable(&nodes, -1, 1)
+            .as_ref()
+            .and_then(|node| node.dyn_ref::<HtmlElement>())
+        {
+            let _ = node.focus();
+        }
+        true
+    } else {
+        false
+    }
+}
+
+pub fn focus_last(nodes: NodeList) -> bool {
+    if nodes.length() > 0 {
+        if let Some(node) = get_next_focusable(&nodes, nodes.length() as i32, 1)
+            .as_ref()
+            .and_then(|node| node.dyn_ref::<HtmlElement>())
+        {
+            let _ = node.focus();
+        }
+        true
+    } else {
+        false
+    }
+}
+
+pub fn focus_match(nodes: NodeList, character: &str) {
+    let lower = character.to_lowercase();
+    for i in 0..nodes.length() {
+        if let Some(el) = nodes
+            .get(i)
+            .as_ref()
+            .and_then(|node| node.dyn_ref::<HtmlElement>())
+        {
+            if el
+                .text_content()
+                .map(|text| text.to_lowercase().starts_with(&lower))
+                .unwrap_or(false)
+            {
+                let _ = el.focus();
+                return;
+            }
         }
     }
 }

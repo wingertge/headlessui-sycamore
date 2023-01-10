@@ -44,10 +44,10 @@ pub fn Checkbox<'cx, G: Html>(cx: Scope<'cx>, props: ToggleProps<'cx, G>) -> Vie
         props.checked.set(!*props.checked.get_untracked());
     };
 
-    props.attributes.exclude_keys(&["on:click", "aria-checked"]);
+    props.attributes.exclude_keys(&["on:click"]);
 
     view! { cx,
-        div(..props.attributes, on:click = on_click, aria-checked = props.checked) {
+        div(..props.attributes, on:click = on_click) {
             (children)
         }
     }
@@ -111,6 +111,7 @@ pub fn CheckboxIndicator<'cx, G: Html>(
         button(..props.attributes, ref = internal_ref, id = context.indicator_id, role = "checkbox",
             aria-labelledby = context.label_id, aria-describedby = context.description_id,
             disabled = (state.disabled)(), checked = *state.checked.get(), tabindex = tabindex,
+            aria-checked = state.checked
         ) {
             (children)
         }

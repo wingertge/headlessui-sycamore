@@ -1,28 +1,22 @@
+use std::mem;
+
 use sycamore::{prelude::*, rt::JsCast};
 use web_sys::{HtmlElement, NodeList};
 
-use super::focus_navigation::{
-    focus_next, focus_next_continuous, focus_prev, focus_prev_continuous,
-};
+use super::focus_navigation::*;
 
 fn query_nodes(el: HtmlElement, owner_id: &str) -> NodeList {
     el.query_selector_all(&format!("[data-sh-owner=\"{owner_id}\"]"))
         .expect("Failed to query nodes")
 }
 
+#[derive(Clone)]
 pub struct FocusNavigator<'cx, G: Html> {
     pub owner_id: String,
-    internal_ref: &'cx NodeRef<G>,
+    pub internal_ref: &'cx NodeRef<G>,
 }
 
 impl<'cx, G: Html> FocusNavigator<'cx, G> {
-    pub fn new(owner_id: String, internal_ref: &'static NodeRef<G>) -> Self {
-        Self {
-            owner_id,
-            internal_ref,
-        }
-    }
-
     fn query(&self) -> NodeList {
         let internal_ref: HtmlElement = self.internal_ref.get::<DomNode>().unchecked_into();
         query_nodes(internal_ref, &self.owner_id)
@@ -51,6 +45,27 @@ impl<'cx, G: Html> FocusNavigator<'cx, G> {
             } else {
                 focus_prev(self.query(), node);
             }
+        }
+    }
+
+    pub fn set_first_checked(&self) {
+        focus_first(self.query());
+    }
+
+    pub fn set_last_checked(&self) {
+        focus_last(self.query());
+    }
+
+    pub fn set_first_match(&self, character: &str) {
+        focus_match(self.query(), character);
+    }
+}
+
+impl<G: Html> FocusNavigator<'static, G> {
+    pub fn new<'cx>(owner_id: String, internal_ref: &'cx NodeRef<G>) -> Self {
+        Self {
+            owner_id,
+            internal_ref: unsafe { mem::transmute(internal_ref) },
         }
     }
 }

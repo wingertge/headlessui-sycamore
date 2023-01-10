@@ -6,5 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-sycamore = { git = "https://github.com/wingertge/sycamore", branch = "attributes" }
+sycamore = { path = "../sycamore/packages/sycamore" }
 web-sys = { version = "0.3", features = ["KeyboardEvent", "HtmlElement"] }
+fluvio-wasm-timer = "0.2"
+wasm-bindgen-futures = "0.4"

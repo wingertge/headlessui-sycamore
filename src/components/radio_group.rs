@@ -127,6 +127,8 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
         }),
     );
 
+    let value = create_ref(cx, props.value);
+
     let description_id = create_id();
     let label_id = create_id();
     let children = scoped_children(cx, props.children, |cx| {
@@ -160,16 +162,12 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
             }
         }
     };
-    let on_click = {
-        let value = props.value.clone();
-        move |_| {
-            if !*disabled.get() {
-                properties.select(value.clone());
-            }
+    let on_click = move |_| {
+        if !*disabled.get() {
+            properties.select(value.clone());
         }
     };
     let on_focus = {
-        let value = props.value.clone();
         move |_| {
             if !*disabled.get() {
                 properties.focus(value.clone());
@@ -182,14 +180,14 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
             properties.blur();
         }
     };
-    let selected = {
-        let value = create_ref(cx, props.value.clone());
-        properties.is_selected(cx, value)
-    };
-    let tabindex = selected.map(
-        cx,
-        move |selected| if *disabled.get() && !*selected { -1 } else { 0 },
-    );
+    let selected = properties.is_selected(cx, value);
+    let tabindex = create_memo(cx, move || {
+        if *disabled.get() || !*selected.get() {
+            -1
+        } else {
+            0
+        }
+    });
     props.attributes.exclude_keys(&[
         "role",
         "aria-labelledby",
@@ -205,7 +203,7 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
     ]);
 
     view! { cx,
-        div(..props.attributes, role = "radio", aria-labelledby = label_id, aria-described-by = description_id,
+        div(..props.attributes, role = "radio", aria-labelledby = label_id, aria-describedby = description_id,
             ref = internal_ref, on:keydown = on_key_down, on:click = on_click, on:focus = on_focus,
             on:blur = on_blur, tabindex = tabindex, data-sh-owner = context.owner_id, aria-checked = selected) {
             (children)
