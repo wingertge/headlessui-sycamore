@@ -1,41 +1,12 @@
-mod calculate_active_index;
 pub mod focus_navigation;
 pub mod focus_navigator;
+mod focus_start_point;
 
-use std::{mem, ops::Deref, rc::Rc};
+use std::mem;
 
-pub use calculate_active_index::*;
+pub use focus_start_point::*;
 use sycamore::prelude::*;
-
-#[derive(Clone)]
-pub struct DynBool(Rc<dyn Fn() -> bool + 'static>);
-
-impl DynBool {
-    pub fn get(&self) -> bool {
-        (self.0)()
-    }
-}
-
-impl Deref for DynBool {
-    type Target = dyn Fn() -> bool;
-
-    fn deref(&self) -> &Self::Target {
-        &*self.0
-    }
-}
-
-impl<T: Into<bool> + Clone> From<T> for DynBool {
-    fn from(value: T) -> Self {
-        let boxed: Rc<dyn Fn() -> bool> = Rc::new(move || value.clone().into());
-        DynBool(unsafe { mem::transmute(boxed) })
-    }
-}
-
-impl Default for DynBool {
-    fn default() -> Self {
-        Self(Rc::new(|| false))
-    }
-}
+use sycamore_utils::ReactiveStr;
 
 pub fn scoped_children<'a, G: Html, F>(cx: Scope<'a>, children: Children<'a, G>, f: F) -> View<G>
 where
@@ -47,4 +18,30 @@ where
         view = children.call(cx);
     });
     view
+}
+
+pub fn class<'cx, G: Html>(
+    cx: Scope<'cx>,
+    attributes: &Attributes<'cx, G>,
+    prop: ReactiveStr<'cx>,
+) -> &'cx ReadSignal<String> {
+    let mut attr_class = attributes.remove("class");
+    create_memo(cx, move || {
+        let attr_class = attr_class.as_mut().map(|class| match class {
+            AttributeValue::Str(s) => s.to_string(),
+            AttributeValue::DynamicStr(s) => s(),
+            _ => unreachable!(),
+        });
+        attr_class.unwrap_or_else(|| prop.get())
+    })
+}
+
+pub fn get_ref<'cx, G: Html>(cx: Scope<'cx>, attributes: &Attributes<'cx, G>) -> &'cx NodeRef<G> {
+    attributes
+        .remove_ref()
+        .unwrap_or_else(|| create_node_ref(cx))
+}
+
+pub fn as_static<T>(value: &T) -> &'static T {
+    unsafe { mem::transmute(value) }
 }

@@ -1,20 +1,24 @@
-use std::mem;
-
+use std::{hash::Hash, mem, rc::Rc};
 use sycamore::{component::Attributes, prelude::*};
+use sycamore_utils::{ReactiveBool, ReactiveStr};
 use web_sys::KeyboardEvent;
 
 use crate::{
     hooks::create_id,
-    utils::{focus_navigator::FocusNavigator, scoped_children, DynBool},
+    utils::{class, focus_navigator::FocusNavigator, get_ref, scoped_children},
 };
 
-use super::{use_headless_select_single, HeadlessSelectSingleOptions};
+use super::{
+    use_headless_select_single, BaseProps, HeadlessSelectProperties, HeadlessSelectSingleOptions,
+};
 
 #[derive(Props)]
 pub struct RadioGroupProps<'cx, T, G: Html> {
     value: &'cx Signal<T>,
     #[prop(default, setter(into))]
-    disabled: DynBool,
+    disabled: ReactiveBool<'cx>,
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -26,7 +30,7 @@ pub struct RadioGroupContext {
 
 struct RadioGroupValueContext<T: PartialEq + 'static> {
     value: &'static Signal<T>,
-    disabled: DynBool,
+    disabled: ReactiveBool<'static>,
 }
 
 #[component]
@@ -36,7 +40,7 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
 ) -> View<G> {
     let description_id = create_id();
     let label_id = create_id();
-    let internal_ref = create_node_ref(cx);
+    let internal_ref = get_ref(cx, &props.attributes);
 
     let children = scoped_children(cx, props.children, |cx| {
         provide_context(
@@ -47,7 +51,7 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
             cx,
             RadioGroupValueContext::<T> {
                 value: unsafe { mem::transmute(props.value) },
-                disabled: props.disabled,
+                disabled: unsafe { mem::transmute(props.disabled) },
             },
         );
         provide_context(
@@ -62,72 +66,81 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
     props
         .attributes
         .exclude_keys(&["role", "aria-labelledby", "aria-describedby", "ref"]);
+    let class = class(cx, &props.attributes, props.class);
 
     view! { cx,
-        div(..props.attributes, role = "radiogroup", aria-labelledby = label_id,
-            aria-describedby = description_id, ref = internal_ref) {
+        div(..props.attributes, class = class, role = "radiogroup", aria-labelledby = label_id,
+            aria-describedby = description_id, ref = internal_ref, data-sh = "radio-group"
+        ) {
             (children)
         }
     }
 }
 
-#[component(inline_props)]
-pub fn RadioGroupLabel<'cx, G: Html>(
-    cx: Scope<'cx>,
-    children: Children<'cx, G>,
-    attributes: Attributes<'cx, G>,
-) -> View<G> {
-    attributes.exclude_keys(&["id"]);
-    let children = children.call(cx);
+#[component]
+pub fn RadioGroupLabel<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+    props.attributes.exclude_keys(&["id"]);
+    let children = props.children.call(cx);
     let context = try_use_context::<RadioGroupContext>(cx);
+
+    let class = class(cx, &props.attributes, props.class);
 
     if let Some(context) = context {
         view! { cx,
-            label(..attributes, id = context.label_id) { (children) }
+            label(..props.attributes, class = class, id = context.label_id, data-sh = "radio-group-label") {
+                (children)
+            }
         }
     } else {
         view! { cx, "Missing context" }
     }
 }
 
-#[component(inline_props)]
-pub fn RadioGroupDescription<'cx, G: Html>(
-    cx: Scope<'cx>,
-    children: Children<'cx, G>,
-    attributes: Attributes<'cx, G>,
-) -> View<G> {
-    attributes.exclude_keys(&["id"]);
-    let children = children.call(cx);
+#[component]
+pub fn RadioGroupDescription<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+    props.attributes.exclude_keys(&["id"]);
+    let children = props.children.call(cx);
     let context = use_context::<RadioGroupContext>(cx);
 
-    view! { cx, div(..attributes, id = context.description_id) { (children) } }
+    let class = class(cx, &props.attributes, props.class);
+
+    view! { cx, div(..props.attributes, class = class, id = context.description_id, data-sh = "radio-group-description") {
+        (children)
+    }}
 }
 
 #[derive(Props)]
-pub struct RadioGroupOptionProps<'cx, T: PartialEq + Clone, G: Html> {
+pub struct RadioGroupOptionProps<'cx, T: PartialEq, G: Html> {
     value: T,
     #[prop(default, setter(into))]
-    disabled: DynBool,
+    disabled: ReactiveBool<'cx>,
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
+pub fn RadioGroupOption<'cx, T: Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
     props: RadioGroupOptionProps<'cx, T, G>,
 ) -> View<G> {
     let context = use_context::<FocusNavigator<G>>(cx);
-    let RadioGroupValueContext { value, disabled } = use_context(cx);
-    let properties = create_ref(
+    let RadioGroupValueContext::<T> { value, disabled } = use_context(cx);
+    let value = create_memo(cx, move || Some(value.get()));
+    let properties: &HeadlessSelectProperties<T> = create_ref(
         cx,
-        use_headless_select_single(HeadlessSelectSingleOptions {
-            value,
-            disabled: props.disabled.clone(),
-        }),
+        use_headless_select_single(
+            cx,
+            HeadlessSelectSingleOptions {
+                value: unsafe { mem::transmute(value) },
+                disabled: unsafe { mem::transmute(props.disabled.clone()) },
+                toggleable: false,
+            },
+        ),
     );
 
-    let value = create_ref(cx, props.value);
+    let value = create_ref(cx, Rc::new(props.value));
 
     let description_id = create_id();
     let label_id = create_id();
@@ -143,7 +156,7 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
 
     let disabled = create_memo(cx, move || props.disabled.get() || disabled.get());
 
-    let internal_ref = create_node_ref(cx);
+    let internal_ref = get_ref(cx, &props.attributes);
     let on_key_down = move |e: KeyboardEvent| {
         if !*disabled.get() {
             match e.key().as_str() {
@@ -180,9 +193,8 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
             properties.blur();
         }
     };
-    let selected = properties.is_selected(cx, value);
     let tabindex = create_memo(cx, move || {
-        if *disabled.get() || !*selected.get() {
+        if *disabled.get() || !properties.is_selected(value) {
             -1
         } else {
             0
@@ -201,11 +213,15 @@ pub fn RadioGroupOption<'cx, T: PartialEq + Clone + 'static, G: Html>(
         "data-sh-owner",
         "aria-checked",
     ]);
+    let class = class(cx, &props.attributes, props.class);
 
     view! { cx,
-        div(..props.attributes, role = "radio", aria-labelledby = label_id, aria-describedby = description_id,
-            ref = internal_ref, on:keydown = on_key_down, on:click = on_click, on:focus = on_focus,
-            on:blur = on_blur, tabindex = tabindex, data-sh-owner = context.owner_id, aria-checked = selected) {
+        div(..props.attributes, role = "radio", aria-labelledby = label_id,
+            aria-describedby = description_id, ref = internal_ref, on:keydown = on_key_down,
+            on:click = on_click, on:focus = on_focus, on:blur = on_blur, tabindex = tabindex,
+            data-sh-owner = context.owner_id, aria-checked = properties.is_selected(value), class = class,
+            data-sh = "radio-group-option"
+        ) {
             (children)
         }
     }

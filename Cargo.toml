@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 sycamore = { path = "../sycamore/packages/sycamore" }
-web-sys = { version = "0.3", features = ["KeyboardEvent", "HtmlElement"] }
+sycamore-utils = { path = "../sycamore-utils" }
+web-sys = { version = "0.3", features = ["KeyboardEvent", "HtmlElement", "Selection"] }
 fluvio-wasm-timer = "0.2"
 wasm-bindgen-futures = "0.4"

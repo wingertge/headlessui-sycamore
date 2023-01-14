@@ -1,18 +1,19 @@
-use sycamore::prelude::*;
+use std::mem;
 
-use crate::utils::DynBool;
+use sycamore::prelude::*;
+use sycamore_utils::ReactiveBool;
 
 pub struct HeadlessToggleContext<'cx> {
     pub checked: &'cx Signal<bool>,
-    pub disabled: DynBool,
+    pub disabled: ReactiveBool<'cx>,
 }
 
 pub fn use_headless_toggle<'cx>(
     checked: &'cx Signal<bool>,
-    disabled: DynBool,
+    disabled: ReactiveBool<'cx>,
 ) -> HeadlessToggleContext<'static> {
     HeadlessToggleContext::<'static> {
-        checked: unsafe { &*(checked as *const _) },
-        disabled,
+        checked: unsafe { mem::transmute(checked) },
+        disabled: unsafe { mem::transmute(disabled) },
     }
 }

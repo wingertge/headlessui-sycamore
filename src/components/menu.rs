@@ -1,4 +1,4 @@
-use std::{cell::RefCell, sync::Arc, time::Duration};
+use std::{cell::RefCell, mem, sync::Arc, time::Duration};
 
 use fluvio_wasm_timer::Delay;
 use sycamore::{prelude::*, rt::JsCast};
@@ -6,46 +6,45 @@ use web_sys::{HtmlElement, KeyboardEvent};
 
 use crate::{
     hooks::create_id,
-    utils::{focus_navigator::FocusNavigator, scoped_children},
+    utils::{as_static, class, focus_navigator::FocusNavigator, get_ref, scoped_children},
 };
 
-#[component(inline_props)]
-pub fn Menu<'cx, G: Html>(
-    cx: Scope<'cx>,
-    children: Children<'cx, G>,
-    attributes: Attributes<'cx, G>,
-) -> View<G> {
-    let id = create_id();
-    let focus_ref = create_node_ref(cx);
+use super::BaseProps;
 
-    let children = scoped_children(cx, children, {
+#[component]
+pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+    let id = create_id();
+    let focus_ref = get_ref(cx, &props.attributes);
+
+    let children = scoped_children(cx, props.children, {
         let id = id.clone();
         move |cx| {
             provide_context(cx, FocusNavigator::<G>::new(id, focus_ref));
         }
     });
 
-    attributes.exclude_keys(&["id", "role", "ref"]);
+    props.attributes.exclude_keys(&["id", "role", "ref"]);
+    let class = class(cx, &props.attributes, props.class);
 
     view! { cx,
-        div(..attributes, id = id, role = "menu", ref = focus_ref) {
+        div(..props.attributes, id = id, role = "menu", ref = focus_ref, class = class, data-sh = "menu") {
             (children)
         }
     }
 }
 
 #[component(inline_props)]
-pub fn MenuItem<'cx, G: Html>(
-    cx: Scope<'cx>,
-    children: Children<'cx, G>,
-    attributes: Attributes<'cx, G>,
-) -> View<G> {
+pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
     let context: &FocusNavigator<'_, G> = use_context(cx);
 
-    let internal_ref = create_node_ref(cx);
+    let internal_ref = get_ref(cx, &props.attributes);
 
-    let characters = Arc::new(RefCell::new(String::new()));
-    let mut delay: Option<Arc<RefCell<Delay>>> = None;
+    let characters = create_ref(cx, RefCell::new(String::new()));
+    let delay = create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None));
+
+    on_cleanup(cx, move || {
+        *delay.borrow_mut() = None;
+    });
 
     let on_key_down = {
         move |e: KeyboardEvent| match e.key().as_str() {
@@ -76,26 +75,20 @@ pub fn MenuItem<'cx, G: Html>(
             }
             key => {
                 if key.len() == 1 {
-                    characters.as_ref().borrow_mut().push_str(key);
-                    if let Some(delay) = delay.clone() {
-                        delay
-                            .as_ref()
-                            .borrow_mut()
-                            .reset(Duration::from_millis(100));
+                    characters.borrow_mut().push_str(key);
+                    if let Some(delay) = delay.borrow_mut().as_mut() {
+                        delay.reset(Duration::from_millis(100));
                     } else {
-                        delay = Some(Arc::new(RefCell::new(Delay::new(Duration::from_millis(
-                            100,
-                        )))));
-                        let context = context.clone();
-                        let delay = delay.clone();
-                        let characters = characters.clone();
+                        *delay.borrow_mut() = Some(Delay::new(Duration::from_millis(100)));
+                        let delay = as_static(delay);
+                        let characters = as_static(characters);
+                        let context = as_static(context);
                         wasm_bindgen_futures::spawn_local(async move {
-                            if let Some(delay) = delay {
-                                let mut delay = delay.as_ref().borrow_mut();
-                                let _ = (&mut *delay).await;
+                            if let Some(delay) = delay.borrow_mut().as_mut() {
+                                delay.await;
+                                context.set_first_match(characters.borrow().as_str());
+                                characters.borrow_mut().clear();
                             }
-                            context.set_first_match(characters.borrow().as_str());
-                            characters.as_ref().borrow_mut().clear();
                         });
                     }
                 }
@@ -103,13 +96,16 @@ pub fn MenuItem<'cx, G: Html>(
         }
     };
 
-    let children = children.call(cx);
-    attributes.exclude_keys(&["data-sh-owner", "role", "tabindex", "ref", "on:keydown"]);
+    let children = props.children.call(cx);
+    props
+        .attributes
+        .exclude_keys(&["data-sh-owner", "role", "tabindex", "ref", "on:keydown"]);
+    let class = class(cx, &props.attributes, props.class);
 
     view! { cx,
         div(
-            ..attributes, data-sh-owner = context.owner_id, role = "menuitem", tabindex = -1,
-            ref = internal_ref, on:keydown = on_key_down
+            ..props.attributes, data-sh-owner = context.owner_id, role = "menuitem", tabindex = -1,
+            ref = internal_ref, on:keydown = on_key_down, class = class, data-sh = "menu-item"
         ) {
             (children)
         }
