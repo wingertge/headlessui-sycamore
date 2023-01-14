@@ -68,7 +68,7 @@ pub fn ListboxButton<'cx, G: Html>(cx: Scope<'cx>, props: ListboxButtonProps<'cx
             on:keydown = on_key_down, on:click = on_click, id = context.button_id, class = class,
             on:mouseenter = move |_| context.hovering.set(true), aria-haspopup = "listbox",
             on:mouseleave = move |_| context.hovering.set(false), aria-controls = context.options_id,
-            disabled = *disabled.get(), aria-expanded = *properties.open.get(),
+            disabled = *disabled.get(), aria-expanded = *properties.open.get(), ..props.attributes,
             data-sh-expanded = *properties.open.get(), data-sh = "listbox-button"
         ) {
             (children)

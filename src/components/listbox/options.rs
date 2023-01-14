@@ -2,14 +2,14 @@ use std::{cell::RefCell, hash::Hash, rc::Rc, time::Duration};
 
 use super::ListboxContext;
 use crate::{
-    components::{disclosure, select::HeadlessSelectProperties, DisclosureProperties},
+    components::{select::HeadlessSelectProperties, DisclosureProperties},
     utils::{as_static, class, get_ref},
     FocusNavigator,
 };
 use fluvio_wasm_timer::Delay;
-use sycamore::{builder::prelude::del, prelude::*, rt::JsCast};
+use sycamore::{prelude::*, rt::JsCast};
 use sycamore_utils::{ReactiveBool, ReactiveStr};
-use web_sys::{FocusEvent, HtmlElement, KeyboardEvent, MouseEvent};
+use web_sys::{FocusEvent, HtmlElement, KeyboardEvent};
 
 #[derive(Props)]
 pub struct ListboxOptionsProps<'cx, G: Html> {
@@ -75,7 +75,7 @@ pub fn ListboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
             on:focusout = on_blur, data-sh = "listbox-options", id = context.options_id, role = "listbox",
             aria-multiselectable = context.multiple, aria-labelledby = context.button_id, ref = internal_ref,
             aria-orientation = if context.horizontal { "horizontal" } else { "vertical" },
-            tabindex = tabindex, disabled = *disabled.get(), class = class
+            tabindex = tabindex, disabled = *disabled.get(), class = class, ..props.attributes
         ) {
             (children)
         }
@@ -99,26 +99,26 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
     props: ListboxOptionProps<'cx, T, G>,
 ) -> View<G> {
     let context: &ListboxContext = use_context(cx);
-    let focus: &FocusNavigator<'cx, G> = use_context(cx);
+    let focus: &FocusNavigator<G> = as_static(use_context(cx));
     let disclosure: &DisclosureProperties = use_context(cx);
-    let properties: &HeadlessSelectProperties<T> = use_context(cx);
+    let properties: &HeadlessSelectProperties<T> = as_static(use_context(cx));
 
-    let value = create_ref(cx, Rc::new(props.value));
+    let value = as_static(create_ref(cx, Rc::new(props.value)));
 
-    let characters = create_ref(cx, RefCell::new(String::new()));
-    let delay = create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None));
+    let characters = as_static(create_ref(cx, RefCell::new(String::new())));
+    let delay = as_static(create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None)));
 
     on_cleanup(cx, || {
         *delay.borrow_mut() = None;
     });
 
-    let disabled = create_ref(cx, move || {
+    let disabled = create_memo(cx, move || {
         properties.disabled.get() || props.disabled.get()
     });
     let node = get_ref(cx, &props.attributes);
 
     let on_key_down = move |e: KeyboardEvent| {
-        if !disabled() {
+        if !*disabled.get() {
             match e.key().as_str() {
                 "ArrowLeft" if context.horizontal => {
                     e.prevent_default();
@@ -157,14 +157,12 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
                         timeout.reset(Duration::from_millis(100));
                     } else {
                         *delay.borrow_mut() = Some(Delay::new(Duration::from_millis(100)));
-                        let delay = as_static(delay);
-                        let focus = as_static(focus);
-                        let characters = as_static(characters);
                         wasm_bindgen_futures::spawn_local(async move {
                             if let Some(delay) = delay.borrow_mut().as_mut() {
-                                delay.await;
-                                focus.set_first_match(characters.borrow().as_ref());
-                                characters.borrow_mut().clear();
+                                if let Ok(_) = delay.await {
+                                    focus.set_first_match(characters.borrow().as_ref());
+                                    characters.borrow_mut().clear();
+                                }
                             }
                         });
                     }
@@ -175,7 +173,7 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
     };
 
     let on_click = move |_| {
-        if !disabled() {
+        if !*disabled.get() {
             properties.select(value.clone());
             if !context.multiple {
                 disclosure.open.set(false);
@@ -184,13 +182,13 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
     };
 
     let on_focus = move |_| {
-        if !disabled() {
+        if !*disabled.get() {
             properties.focus(value.clone())
         }
     };
 
     let on_blur = move |_| {
-        if !disabled() {
+        if !*disabled.get() {
             properties.blur();
         }
     };
@@ -204,15 +202,16 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
         {
             if *disclosure.open.get()
                 && properties.is_selected_untracked(value.as_ref())
-                && !disabled()
+                && !*disabled.get()
             {
-                element.focus();
+                let _ = element.focus();
             }
         }
     });
 
     let selected = create_ref(cx, move || properties.is_selected(value.as_ref()));
     let class = class(cx, &props.attributes, props.class);
+    let children = props.children.call(cx);
 
     props.attributes.exclude_keys(&[
         "on:keydown",
@@ -230,8 +229,11 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
         li(
             on:keydown = on_key_down, on:click = on_click, on:focus = on_focus, on:blur = on_blur,
             data-sh = "listbox-option", data-sh-owner = context.owner_id, role = "option", tabindex = -1,
-            ref = node, disabled = disabled(), aria-selected = selected(), data-sh-selected = selected(),
-            data-sh-active = properties.is_active(value.as_ref()), class = class
-        )
+            ref = node, disabled = *disabled.get(), aria-selected = selected(), class = class,
+            data-sh-selected = selected(), data-sh-active = properties.is_active(value.as_ref()),
+            ..props.attributes
+        ) {
+            (children)
+        }
     }
 }

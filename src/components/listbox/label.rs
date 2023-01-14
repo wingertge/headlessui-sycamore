@@ -13,7 +13,7 @@ pub fn ListboxLabel<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> V
     props.attributes.exclude_keys(&["id", "data-sh"]);
 
     view! { cx,
-        label(id = context.label_id, data-sh = "listbox-label", class = class) {
+        label(id = context.label_id, data-sh = "listbox-label", class = class, ..props.attributes) {
             (children)
         }
     }

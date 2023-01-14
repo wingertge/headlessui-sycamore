@@ -129,7 +129,7 @@ pub fn ListBox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
 
     view! { cx,
         div(data-sh = "listbox", id = owner_id, aria-labelledby = label_id,
-            disabled = props.disabled.get(), class = class
+            disabled = props.disabled.get(), class = class, ..props.attributes
         ) {
             (children)
         }

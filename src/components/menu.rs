@@ -1,4 +1,4 @@
-use std::{cell::RefCell, mem, sync::Arc, time::Duration};
+use std::{cell::RefCell, time::Duration};
 
 use fluvio_wasm_timer::Delay;
 use sycamore::{prelude::*, rt::JsCast};
@@ -85,9 +85,10 @@ pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<
                         let context = as_static(context);
                         wasm_bindgen_futures::spawn_local(async move {
                             if let Some(delay) = delay.borrow_mut().as_mut() {
-                                delay.await;
-                                context.set_first_match(characters.borrow().as_str());
-                                characters.borrow_mut().clear();
+                                if let Ok(_) = delay.await {
+                                    context.set_first_match(characters.borrow().as_str());
+                                    characters.borrow_mut().clear();
+                                }
                             }
                         });
                     }
