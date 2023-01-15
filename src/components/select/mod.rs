@@ -9,7 +9,7 @@ pub struct HeadlessSelectSingleOptions<T: 'static> {
     pub toggleable: bool,
 }
 
-pub struct HeadlessSelectProperties<T: Eq + Hash + 'static> {
+pub struct SelectProperties<T: Eq + Hash + 'static> {
     pub value: SelectValue<T>,
     pub active: &'static Signal<Option<Rc<T>>>,
     pub disabled: ReactiveBool<'static>,
@@ -21,7 +21,7 @@ pub enum SelectValue<T: Eq + Hash + 'static> {
     Multiple(&'static Signal<HashSet<Rc<T>>>),
 }
 
-impl<T: Eq + Hash + 'static> HeadlessSelectProperties<T> {
+impl<T: Eq + Hash + 'static> SelectProperties<T> {
     pub fn is_selected(&self, value: &T) -> bool {
         match &self.value {
             SelectValue::Single(selected) => {
@@ -98,14 +98,14 @@ impl<T: Eq + Hash + 'static> HeadlessSelectProperties<T> {
 pub fn use_headless_select_single<'cx, T: Hash + Eq>(
     cx: Scope<'cx>,
     options: HeadlessSelectSingleOptions<T>,
-) -> HeadlessSelectProperties<T> {
+) -> SelectProperties<T> {
     let HeadlessSelectSingleOptions {
         value,
         disabled,
         toggleable,
     } = options;
     let active = create_signal::<Option<Rc<T>>>(cx, None);
-    HeadlessSelectProperties {
+    SelectProperties {
         active: unsafe { mem::transmute(active) },
         value: SelectValue::Single(value),
         disabled,

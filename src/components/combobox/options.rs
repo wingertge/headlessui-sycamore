@@ -1,18 +1,16 @@
-use std::{cell::RefCell, hash::Hash, rc::Rc, time::Duration};
-
-use super::ListboxContext;
+use super::ComboboxContext;
 use crate::{
     components::{select::SelectProperties, DisclosureProperties},
     utils::{as_static, class, get_ref},
     FocusNavigator,
 };
-use fluvio_wasm_timer::Delay;
+use std::{hash::Hash, rc::Rc};
 use sycamore::{prelude::*, rt::JsCast};
 use sycamore_utils::{ReactiveBool, ReactiveStr};
 use web_sys::{FocusEvent, HtmlElement, KeyboardEvent};
 
 #[derive(Props)]
-pub struct ListboxOptionsProps<'cx, G: Html> {
+pub struct ComboboxOptionsProps<'cx, G: Html> {
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
@@ -22,11 +20,11 @@ pub struct ListboxOptionsProps<'cx, G: Html> {
 }
 
 #[component]
-pub fn ListboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
+pub fn ComboboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
     cx: Scope<'cx>,
-    props: ListboxOptionsProps<'cx, G>,
+    props: ComboboxOptionsProps<'cx, G>,
 ) -> View<G> {
-    let context: &ListboxContext = use_context(cx);
+    let context: &ComboboxContext = use_context(cx);
     let select_properties: &SelectProperties<T> = use_context(cx);
     let properties: &DisclosureProperties = use_context(cx);
 
@@ -83,7 +81,7 @@ pub fn ListboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
 }
 
 #[derive(Props)]
-pub struct ListboxOptionProps<'cx, T: Eq + Hash + 'static, G: Html> {
+pub struct ComboboxOptionProps<'cx, T: Eq + Hash + 'static, G: Html> {
     value: T,
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
@@ -94,23 +92,16 @@ pub struct ListboxOptionProps<'cx, T: Eq + Hash + 'static, G: Html> {
 }
 
 #[component]
-pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
+pub fn ComboboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
-    props: ListboxOptionProps<'cx, T, G>,
+    props: ComboboxOptionProps<'cx, T, G>,
 ) -> View<G> {
-    let context: &ListboxContext = use_context(cx);
+    let context: &ComboboxContext = use_context(cx);
     let focus: &FocusNavigator<G> = as_static(use_context(cx));
     let disclosure: &DisclosureProperties = use_context(cx);
     let properties: &SelectProperties<T> = as_static(use_context(cx));
 
     let value = as_static(create_ref(cx, Rc::new(props.value)));
-
-    let characters = as_static(create_ref(cx, RefCell::new(String::new())));
-    let delay = as_static(create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None)));
-
-    on_cleanup(cx, || {
-        *delay.borrow_mut() = None;
-    });
 
     let disabled = create_memo(cx, move || {
         properties.disabled.get() || props.disabled.get()
@@ -150,23 +141,6 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
                 "End" => {
                     e.prevent_default();
                     focus.set_last_checked();
-                }
-                key if key.len() == 1 => {
-                    characters.borrow_mut().push_str(key);
-                    if let Some(timeout) = delay.borrow_mut().as_mut() {
-                        timeout.reset(Duration::from_millis(100));
-                    } else {
-                        *delay.borrow_mut() = Some(Delay::new(Duration::from_millis(100)));
-                        wasm_bindgen_futures::spawn_local(async move {
-                            if let Some(delay) = delay.borrow_mut().as_mut() {
-                                if let Ok(_) = delay.await {
-                                    focus.set_first_match(characters.borrow().as_ref());
-                                    characters.borrow_mut().clear();
-                                }
-                            }
-                            *delay.borrow_mut() = None;
-                        });
-                    }
                 }
                 _ => {}
             }

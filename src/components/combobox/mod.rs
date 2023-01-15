@@ -9,17 +9,19 @@ use crate::{
 };
 
 mod button;
+mod input;
 mod label;
 mod options;
 
 pub use button::*;
+pub use input::*;
 pub use label::*;
 pub use options::*;
 
 use super::{DisclosureProperties, SelectProperties, SelectValue};
 
 #[derive(Props)]
-pub struct ListBoxProps<'cx, T: Clone + Eq + Hash + 'static, F, G: Html>
+pub struct ComboboxProps<'cx, T: Clone + Eq + Hash + 'static, F, G: Html>
 where
     F: Fn(bool) + 'cx,
 {
@@ -45,10 +47,11 @@ where
     attributes: Attributes<'cx, G>,
 }
 
-pub struct ListboxContext {
+pub struct ComboboxContext {
     multiple: bool,
     owner_id: String,
     label_id: String,
+    input_id: String,
     button_id: String,
     options_id: String,
     horizontal: bool,
@@ -56,9 +59,9 @@ pub struct ListboxContext {
 }
 
 #[component]
-pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
+pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
     cx: Scope<'cx>,
-    props: ListBoxProps<'cx, T, F, G>,
+    props: ComboboxProps<'cx, T, F, G>,
 ) -> View<G> {
     let open = props
         .open
@@ -67,16 +70,15 @@ pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
     let hovering = create_signal(cx, false);
     let owner_id = create_id();
     let label_id = create_id();
-    let button_id = create_id();
-    let options_id = create_id();
 
     let focus_start = FocusStartPoint::new(cx);
-    let context = ListboxContext {
+    let context = ComboboxContext {
         multiple: props.value_multiple.is_some(),
         owner_id: owner_id.clone(),
         label_id: label_id.clone(),
-        button_id,
-        options_id,
+        button_id: create_id(),
+        options_id: create_id(),
+        input_id: create_id(),
         horizontal: props.horizontal,
         hovering: unsafe { mem::transmute(hovering) },
     };

@@ -6,6 +6,7 @@ use sycamore::{
 use sycamore_utils::ReactiveStr;
 
 mod checkbox;
+mod combobox;
 mod disclosure;
 mod listbox;
 mod menu;
@@ -14,6 +15,7 @@ mod select;
 mod toggle;
 
 pub use checkbox::*;
+pub use combobox::*;
 pub use disclosure::*;
 pub use listbox::*;
 pub use menu::*;

@@ -8,9 +8,7 @@ use crate::{
     utils::{class, focus_navigator::FocusNavigator, get_ref, scoped_children},
 };
 
-use super::{
-    use_headless_select_single, BaseProps, HeadlessSelectProperties, HeadlessSelectSingleOptions,
-};
+use super::{use_headless_select_single, BaseProps, HeadlessSelectSingleOptions, SelectProperties};
 
 #[derive(Props)]
 pub struct RadioGroupProps<'cx, T, G: Html> {
@@ -128,7 +126,7 @@ pub fn RadioGroupOption<'cx, T: Eq + Hash + 'static, G: Html>(
     let context = use_context::<FocusNavigator<G>>(cx);
     let RadioGroupValueContext::<T> { value, disabled } = use_context(cx);
     let value = create_memo(cx, move || Some(value.get()));
-    let properties: &HeadlessSelectProperties<T> = create_ref(
+    let properties: &SelectProperties<T> = create_ref(
         cx,
         use_headless_select_single(
             cx,

@@ -10,7 +10,7 @@ the feature isn't available yet.
 Currently implemented components are:
 - [x] Menu (Dropdown)
 - [x] Listbox
-- [ ] Combobox
+- [x] Combobox
 - [x] Checkbox (Toggle)
 - [x] Disclosure
 - [ ] Dialog (Modal)
