@@ -90,6 +90,7 @@ pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<
                                     characters.borrow_mut().clear();
                                 }
                             }
+                            *delay.borrow_mut() = None;
                         });
                     }
                 }

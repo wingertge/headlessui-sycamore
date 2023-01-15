@@ -164,6 +164,7 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
                                     characters.borrow_mut().clear();
                                 }
                             }
+                            *delay.borrow_mut() = None;
                         });
                     }
                 }
