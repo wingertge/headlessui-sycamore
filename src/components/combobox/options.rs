@@ -4,7 +4,7 @@ use crate::{
     utils::{as_static, class, get_ref},
     FocusNavigator,
 };
-use std::{hash::Hash, rc::Rc};
+use std::hash::Hash;
 use sycamore::{prelude::*, rt::JsCast};
 use sycamore_utils::{ReactiveBool, ReactiveStr};
 use web_sys::{FocusEvent, HtmlElement, KeyboardEvent};
@@ -92,7 +92,7 @@ pub struct ComboboxOptionProps<'cx, T: Eq + Hash + 'static, G: Html> {
 }
 
 #[component]
-pub fn ComboboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
+pub fn ComboboxOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
     props: ComboboxOptionProps<'cx, T, G>,
 ) -> View<G> {
@@ -101,7 +101,7 @@ pub fn ComboboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
     let disclosure: &DisclosureProperties = use_context(cx);
     let properties: &SelectProperties<T> = as_static(use_context(cx));
 
-    let value = as_static(create_ref(cx, Rc::new(props.value)));
+    let value = as_static(create_ref(cx, props.value));
 
     let disabled = create_memo(cx, move || {
         properties.disabled.get() || props.disabled.get()
@@ -175,16 +175,14 @@ pub fn ComboboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
             .as_ref()
             .and_then(|node| node.dyn_ref::<HtmlElement>())
         {
-            if *disclosure.open.get()
-                && properties.is_selected_untracked(value.as_ref())
-                && !*disabled.get()
+            if *disclosure.open.get() && properties.is_selected_untracked(value) && !*disabled.get()
             {
                 let _ = element.focus();
             }
         }
     });
 
-    let selected = create_ref(cx, move || properties.is_selected(value.as_ref()));
+    let selected = create_ref(cx, move || properties.is_selected(value));
     let class = class(cx, &props.attributes, props.class);
     let children = props.children.call(cx);
 
@@ -205,7 +203,7 @@ pub fn ComboboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
             on:keydown = on_key_down, on:click = on_click, on:focus = on_focus, on:blur = on_blur,
             data-sh = "listbox-option", data-sh-owner = context.owner_id, role = "option", tabindex = -1,
             ref = node, disabled = *disabled.get(), aria-selected = selected(), class = class,
-            data-sh-selected = selected(), data-sh-active = properties.is_active(value.as_ref()),
+            data-sh-selected = selected(), data-sh-active = properties.is_active(value),
             ..props.attributes
         ) {
             (children)

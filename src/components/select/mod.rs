@@ -1,32 +1,36 @@
-use std::{collections::HashSet, hash::Hash, mem, rc::Rc};
+use std::{borrow::Borrow, collections::HashSet, hash::Hash, mem, rc::Rc};
 
 use sycamore::prelude::*;
 use sycamore_utils::ReactiveBool;
 
 pub struct HeadlessSelectSingleOptions<T: 'static> {
-    pub value: &'static Signal<Option<Rc<T>>>,
+    pub value: &'static Signal<Option<T>>,
     pub disabled: ReactiveBool<'static>,
     pub toggleable: bool,
 }
 
-pub struct SelectProperties<T: Eq + Hash + 'static> {
+pub struct SelectProperties<T: Clone + Eq + Hash + 'static> {
     pub value: SelectValue<T>,
-    pub active: &'static Signal<Option<Rc<T>>>,
+    pub active: &'static Signal<Option<T>>,
     pub disabled: ReactiveBool<'static>,
     pub toggleable: bool,
 }
 
 pub enum SelectValue<T: Eq + Hash + 'static> {
-    Single(&'static Signal<Option<Rc<T>>>),
-    Multiple(&'static Signal<HashSet<Rc<T>>>),
+    Single(&'static Signal<Option<T>>),
+    Multiple(&'static Signal<HashSet<T>>),
 }
 
-impl<T: Eq + Hash + 'static> SelectProperties<T> {
-    pub fn is_selected(&self, value: &T) -> bool {
+impl<T: Clone + Eq + Hash + 'static> SelectProperties<T> {
+    pub fn is_selected<Q>(&self, value: &Q) -> bool
+    where
+        T: Borrow<Q>,
+        Q: Eq + Hash,
+    {
         match &self.value {
             SelectValue::Single(selected) => {
                 if let Some(selected) = selected.get().as_ref() {
-                    selected.as_ref() == value
+                    selected.borrow() == value
                 } else {
                     false
                 }
@@ -35,11 +39,15 @@ impl<T: Eq + Hash + 'static> SelectProperties<T> {
         }
     }
 
-    pub fn is_selected_untracked(&self, value: &T) -> bool {
+    pub fn is_selected_untracked<Q>(&self, value: &Q) -> bool
+    where
+        T: Borrow<Q>,
+        Q: Eq + Hash,
+    {
         match &self.value {
             SelectValue::Single(selected) => {
                 if let Some(selected) = selected.get_untracked().as_ref() {
-                    selected.as_ref() == value
+                    selected.borrow() == value
                 } else {
                     false
                 }
@@ -48,7 +56,7 @@ impl<T: Eq + Hash + 'static> SelectProperties<T> {
         }
     }
 
-    pub fn select(&self, value: Rc<T>) {
+    pub fn select(&self, value: T) {
         match &self.value {
             SelectValue::Single(selected) => {
                 if self.toggleable && selected.get_untracked().as_ref().as_ref() == Some(&value) {
@@ -78,15 +86,19 @@ impl<T: Eq + Hash + 'static> SelectProperties<T> {
         self.active.get().is_some()
     }
 
-    pub fn is_active(&self, value: &T) -> bool {
+    pub fn is_active<Q>(&self, value: &Q) -> bool
+    where
+        T: Borrow<Q>,
+        Q: Eq + Hash,
+    {
         if let Some(active) = self.active.get().as_ref() {
-            active.as_ref() == value
+            active.borrow() == value
         } else {
             false
         }
     }
 
-    pub fn focus(&self, value: Rc<T>) {
+    pub fn focus(&self, value: T) {
         self.active.set(Some(value));
     }
 
@@ -95,7 +107,7 @@ impl<T: Eq + Hash + 'static> SelectProperties<T> {
     }
 }
 
-pub fn use_headless_select_single<'cx, T: Hash + Eq>(
+pub fn use_headless_select_single<'cx, T: Clone + Hash + Eq>(
     cx: Scope<'cx>,
     options: HeadlessSelectSingleOptions<T>,
 ) -> SelectProperties<T> {

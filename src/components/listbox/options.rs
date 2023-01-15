@@ -1,4 +1,4 @@
-use std::{cell::RefCell, hash::Hash, rc::Rc, time::Duration};
+use std::{cell::RefCell, hash::Hash, time::Duration};
 
 use super::ListboxContext;
 use crate::{
@@ -94,7 +94,7 @@ pub struct ListboxOptionProps<'cx, T: Eq + Hash + 'static, G: Html> {
 }
 
 #[component]
-pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
+pub fn ListboxOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
     props: ListboxOptionProps<'cx, T, G>,
 ) -> View<G> {
@@ -103,7 +103,7 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
     let disclosure: &DisclosureProperties = use_context(cx);
     let properties: &SelectProperties<T> = as_static(use_context(cx));
 
-    let value = as_static(create_ref(cx, Rc::new(props.value)));
+    let value = as_static(create_ref(cx, props.value));
 
     let characters = as_static(create_ref(cx, RefCell::new(String::new())));
     let delay = as_static(create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None)));
@@ -201,16 +201,14 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
             .as_ref()
             .and_then(|node| node.dyn_ref::<HtmlElement>())
         {
-            if *disclosure.open.get()
-                && properties.is_selected_untracked(value.as_ref())
-                && !*disabled.get()
+            if *disclosure.open.get() && properties.is_selected_untracked(value) && !*disabled.get()
             {
                 let _ = element.focus();
             }
         }
     });
 
-    let selected = create_ref(cx, move || properties.is_selected(value.as_ref()));
+    let selected = create_ref(cx, move || properties.is_selected(value));
     let class = class(cx, &props.attributes, props.class);
     let children = props.children.call(cx);
 
@@ -231,7 +229,7 @@ pub fn ListboxOption<'cx, T: Eq + Hash + 'static, G: Html>(
             on:keydown = on_key_down, on:click = on_click, on:focus = on_focus, on:blur = on_blur,
             data-sh = "listbox-option", data-sh-owner = context.owner_id, role = "option", tabindex = -1,
             ref = node, disabled = *disabled.get(), aria-selected = selected(), class = class,
-            data-sh-selected = selected(), data-sh-active = properties.is_active(value.as_ref()),
+            data-sh-selected = selected(), data-sh-active = properties.is_active(value),
             ..props.attributes
         ) {
             (children)

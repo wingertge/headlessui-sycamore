@@ -1,4 +1,4 @@
-use std::{hash::Hash, mem, rc::Rc};
+use std::{hash::Hash, mem};
 use sycamore::{component::Attributes, prelude::*};
 use sycamore_utils::{ReactiveBool, ReactiveStr};
 use web_sys::KeyboardEvent;
@@ -119,7 +119,7 @@ pub struct RadioGroupOptionProps<'cx, T: PartialEq, G: Html> {
 }
 
 #[component]
-pub fn RadioGroupOption<'cx, T: Eq + Hash + 'static, G: Html>(
+pub fn RadioGroupOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
     props: RadioGroupOptionProps<'cx, T, G>,
 ) -> View<G> {
@@ -138,7 +138,7 @@ pub fn RadioGroupOption<'cx, T: Eq + Hash + 'static, G: Html>(
         ),
     );
 
-    let value = create_ref(cx, Rc::new(props.value));
+    let value = create_ref(cx, props.value);
 
     let description_id = create_id();
     let label_id = create_id();
