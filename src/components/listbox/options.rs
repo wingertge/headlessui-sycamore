@@ -1,4 +1,4 @@
-use std::{cell::RefCell, hash::Hash, time::Duration};
+use std::{cell::RefCell, hash::Hash};
 
 use super::ListboxContext;
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
     utils::{as_static, class, get_ref},
     FocusNavigator,
 };
-use fluvio_wasm_timer::Delay;
+use gloo_timers::callback::Timeout;
 use sycamore::{prelude::*, rt::JsCast};
 use sycamore_utils::{ReactiveBool, ReactiveStr};
 use web_sys::{FocusEvent, HtmlElement, KeyboardEvent};
@@ -106,10 +106,15 @@ pub fn ListboxOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     let value = as_static(create_ref(cx, props.value));
 
     let characters = as_static(create_ref(cx, RefCell::new(String::new())));
-    let delay = as_static(create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None)));
+    let delay = as_static(create_ref::<RefCell<Option<Timeout>>>(
+        cx,
+        RefCell::new(None),
+    ));
 
     on_cleanup(cx, || {
-        *delay.borrow_mut() = None;
+        if let Some(delay) = delay.borrow_mut().take() {
+            delay.cancel();
+        }
     });
 
     let disabled = create_memo(cx, move || {
@@ -153,20 +158,13 @@ pub fn ListboxOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
                 }
                 key if key.len() == 1 => {
                     characters.borrow_mut().push_str(key);
-                    if let Some(timeout) = delay.borrow_mut().as_mut() {
-                        timeout.reset(Duration::from_millis(100));
-                    } else {
-                        *delay.borrow_mut() = Some(Delay::new(Duration::from_millis(100)));
-                        wasm_bindgen_futures::spawn_local(async move {
-                            if let Some(delay) = delay.borrow_mut().as_mut() {
-                                if let Ok(_) = delay.await {
-                                    focus.set_first_match(characters.borrow().as_ref());
-                                    characters.borrow_mut().clear();
-                                }
-                            }
-                            *delay.borrow_mut() = None;
-                        });
+                    if let Some(timeout) = delay.borrow_mut().take() {
+                        timeout.cancel();
                     }
+                    *delay.borrow_mut() = Some(Timeout::new(100, move || {
+                        focus.set_first_match(characters.borrow().as_ref());
+                        characters.borrow_mut().clear();
+                    }));
                 }
                 _ => {}
             }

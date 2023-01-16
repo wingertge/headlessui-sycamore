@@ -1,6 +1,6 @@
-use std::{cell::RefCell, time::Duration};
+use std::cell::RefCell;
 
-use fluvio_wasm_timer::Delay;
+use gloo_timers::callback::Timeout;
 use sycamore::{prelude::*, rt::JsCast};
 use web_sys::{HtmlElement, KeyboardEvent};
 
@@ -35,15 +35,20 @@ pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
 
 #[component(inline_props)]
 pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
-    let context: &FocusNavigator<'_, G> = use_context(cx);
+    let context: &FocusNavigator<'_, G> = as_static(use_context(cx));
 
     let internal_ref = get_ref(cx, &props.attributes);
 
-    let characters = create_ref(cx, RefCell::new(String::new()));
-    let delay = create_ref::<RefCell<Option<Delay>>>(cx, RefCell::new(None));
+    let characters = as_static(create_ref(cx, RefCell::new(String::new())));
+    let timeout = as_static(create_ref::<RefCell<Option<Timeout>>>(
+        cx,
+        RefCell::new(None),
+    ));
 
     on_cleanup(cx, move || {
-        *delay.borrow_mut() = None;
+        if let Some(timeout) = timeout.borrow_mut().take() {
+            timeout.cancel();
+        }
     });
 
     let on_key_down = {
@@ -76,23 +81,13 @@ pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<
             key => {
                 if key.len() == 1 {
                     characters.borrow_mut().push_str(key);
-                    if let Some(delay) = delay.borrow_mut().as_mut() {
-                        delay.reset(Duration::from_millis(100));
-                    } else {
-                        *delay.borrow_mut() = Some(Delay::new(Duration::from_millis(100)));
-                        let delay = as_static(delay);
-                        let characters = as_static(characters);
-                        let context = as_static(context);
-                        wasm_bindgen_futures::spawn_local(async move {
-                            if let Some(delay) = delay.borrow_mut().as_mut() {
-                                if let Ok(_) = delay.await {
-                                    context.set_first_match(characters.borrow().as_str());
-                                    characters.borrow_mut().clear();
-                                }
-                            }
-                            *delay.borrow_mut() = None;
-                        });
+                    if let Some(timeout) = timeout.borrow_mut().take() {
+                        timeout.cancel();
                     }
+                    *timeout.borrow_mut() = Some(Timeout::new(100, move || {
+                        context.set_first_match(characters.borrow().as_str());
+                        characters.borrow_mut().clear();
+                    }));
                 }
             }
         }
