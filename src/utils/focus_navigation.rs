@@ -1,5 +1,9 @@
-use sycamore::rt::JsCast;
-use web_sys::{HtmlElement, Node, NodeList};
+use sycamore::{
+    prelude::NodeRef,
+    rt::JsCast,
+    web::{DomNode, Html},
+};
+use web_sys::{window, HtmlElement, Node, NodeList};
 
 fn is_focusable(el: Node) -> bool {
     let el = el.dyn_into::<HtmlElement>().unwrap();
@@ -130,4 +134,44 @@ pub fn focus_match(nodes: NodeList, character: &str) {
             }
         }
     }
+}
+
+fn as_html_element<G: Html>(node: &NodeRef<G>) -> Option<HtmlElement> {
+    node.try_get::<DomNode>()?.to_web_sys().dyn_into().ok()
+}
+
+pub fn lock_focus<G: Html>(node: &NodeRef<G>, reverse: bool) -> Option<()> {
+    let nodes = get_focusable_elements(node)?;
+    let node = as_html_element(node)?;
+    let document = window()?.document()?;
+
+    let contains = || {
+        node.contains(
+            document
+                .active_element()
+                .as_ref()
+                .map(|el| el.dyn_ref().unwrap()),
+        )
+    };
+
+    if reverse {
+        if document.active_element().is_none() || !contains() {
+            focus_last(nodes);
+        } else {
+            focus_prev(nodes, document.active_element()?.dyn_ref()?);
+        }
+    } else if document.active_element().is_none() || !contains() {
+        focus_first(nodes);
+    } else {
+        focus_next(nodes, document.active_element()?.dyn_ref()?);
+    }
+
+    Some(())
+}
+
+const QUERY: &str = r#"a[href], area[href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), button:not([disabled]), iframe, object, embed, [tabindex]:not([tabindex="-1"]), [contenteditable]"#;
+
+pub fn get_focusable_elements<G: Html>(node: &NodeRef<G>) -> Option<NodeList> {
+    let node: HtmlElement = as_html_element(node)?;
+    node.query_selector_all(QUERY).ok()
 }

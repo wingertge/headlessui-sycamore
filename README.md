@@ -13,7 +13,7 @@ Currently implemented components are:
 - [x] Combobox
 - [x] Checkbox (Toggle)
 - [x] Disclosure
-- [ ] Dialog (Modal)
+- [x] Dialog (Modal)
 - [ ] Popover
 - [x] Radio Group
 - [ ] Tabs
