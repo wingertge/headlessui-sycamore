@@ -31,7 +31,6 @@ pub struct DialogProps<'cx, G: Html> {
 }
 
 pub struct DialogContext {
-    owner_id: String,
     panel_id: String,
     title_id: String,
     description_id: String,
@@ -46,7 +45,6 @@ pub fn Dialog<'cx, G: Html>(cx: Scope<'cx>, props: DialogProps<'cx, G>) -> View<
     let fsp = FocusStartPoint::new(cx);
 
     let context = DialogContext {
-        owner_id: owner_id.clone(),
         panel_id: create_id(),
         title_id: title_id.clone(),
         description_id: description_id.clone(),

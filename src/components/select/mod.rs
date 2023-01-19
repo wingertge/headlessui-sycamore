@@ -107,8 +107,8 @@ impl<T: Clone + Eq + Hash + 'static> SelectProperties<T> {
     }
 }
 
-pub fn use_headless_select_single<'cx, T: Clone + Hash + Eq>(
-    cx: Scope<'cx>,
+pub fn use_headless_select_single<T: Clone + Hash + Eq>(
+    cx: Scope<'_>,
     options: HeadlessSelectSingleOptions<T>,
 ) -> SelectProperties<T> {
     let HeadlessSelectSingleOptions {

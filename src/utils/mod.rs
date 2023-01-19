@@ -2,10 +2,10 @@ pub mod focus_navigation;
 pub mod focus_navigator;
 mod focus_start_point;
 
-use std::mem;
+use std::{borrow::Cow, mem};
 
 pub use focus_start_point::*;
-use sycamore::prelude::*;
+use sycamore::{prelude::*, utils::apply_attribute};
 use sycamore_utils::ReactiveStr;
 
 pub fn scoped_children<'a, G: Html, F>(cx: Scope<'a>, children: Children<'a, G>, f: F) -> View<G>
@@ -44,4 +44,54 @@ pub fn get_ref<'cx, G: Html>(cx: Scope<'cx>, attributes: &Attributes<'cx, G>) ->
 
 pub fn as_static<T>(value: &T) -> &'static T {
     unsafe { mem::transmute(value) }
+}
+
+pub trait SetDynAttr<G: Html> {
+    fn set_dyn_attr<'cx, N, V, F>(&self, cx: Scope<'cx>, name: N, value: F)
+    where
+        N: Into<Cow<'static, str>> + 'cx,
+        V: Into<Cow<'static, str>> + 'cx,
+        F: FnMut() -> V + 'cx;
+
+    fn set_dyn_bool<'cx, N, F>(&self, cx: Scope<'cx>, name: N, value: F)
+    where
+        N: Into<Cow<'static, str>> + 'cx,
+        F: FnMut() -> bool + 'cx;
+
+    fn apply_attributes<'cx>(&self, cx: Scope<'cx>, attrs: &Attributes<'cx, G>);
+}
+
+impl<G: Html> SetDynAttr<G> for G {
+    fn set_dyn_attr<'cx, N, V, F>(&self, cx: Scope<'cx>, name: N, mut value: F)
+    where
+        N: Into<Cow<'static, str>> + 'cx,
+        V: Into<Cow<'static, str>> + 'cx,
+        F: FnMut() -> V + 'cx,
+    {
+        let el = self.clone();
+        let name = name.into();
+        create_effect(cx, move || el.set_attribute(name.clone(), value().into()));
+    }
+
+    fn set_dyn_bool<'cx, N, F>(&self, cx: Scope<'cx>, name: N, mut value: F)
+    where
+        N: Into<Cow<'static, str>> + 'cx,
+        F: FnMut() -> bool + 'cx,
+    {
+        let el = self.clone();
+        let name = name.into();
+        create_effect(cx, move || {
+            if value() {
+                el.set_attribute(name.clone(), "".into());
+            } else {
+                el.remove_attribute(name.clone());
+            }
+        });
+    }
+
+    fn apply_attributes<'cx>(&self, cx: Scope<'cx>, attrs: &Attributes<'cx, G>) {
+        for (name, value) in attrs.drain() {
+            apply_attribute(cx, self.clone(), name.clone(), value);
+        }
+    }
 }

@@ -11,7 +11,7 @@ fn is_focusable(el: Node) -> bool {
 }
 
 fn get_next_focusable(nodes: &NodeList, anchor: i32, direction: i32) -> Option<Node> {
-    let mut current = anchor as i32 + direction;
+    let mut current = anchor + direction;
     while current >= 0 && (current as u32) < nodes.length() {
         if is_focusable(nodes.get(current as u32).unwrap()) {
             return nodes.get(current as u32);
@@ -22,14 +22,14 @@ fn get_next_focusable(nodes: &NodeList, anchor: i32, direction: i32) -> Option<N
 }
 
 fn get_next_locked_focusable(nodes: NodeList, anchor: i32, direction: i32) -> Option<Node> {
-    let mut current = anchor as i32 + direction;
+    let mut current = anchor + direction;
     if direction == 1 && current == nodes.length() as i32 {
         current = 0;
     }
     if direction == -1 && current == -1 {
         current = nodes.length() as i32 - 1;
     }
-    while anchor as i32 != current {
+    while anchor != current {
         if is_focusable(nodes.get(current as u32).unwrap()) {
             return nodes.get(current as u32);
         }

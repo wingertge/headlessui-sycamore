@@ -13,7 +13,8 @@ pub struct FocusStartPoint {
 }
 
 impl FocusStartPoint {
-    pub fn new<'cx>(cx: Scope<'cx>) -> &'cx Self {
+    #[cfg(target_arch = "wasm32")]
+    pub fn new(cx: Scope<'_>) -> &Self {
         let this = if let Some(document) = window().and_then(|window| window.document()) {
             Self {
                 return_element: RefCell::new(document.active_element()),
@@ -23,6 +24,13 @@ impl FocusStartPoint {
             Default::default()
         };
         let this = create_ref(cx, this);
+        on_cleanup(cx, move || this.load());
+        this
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn new(cx: Scope<'_>) -> &Self {
+        let this: &Self = create_ref(cx, Default::default());
         on_cleanup(cx, move || this.load());
         this
     }

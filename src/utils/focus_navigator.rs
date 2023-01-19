@@ -62,7 +62,7 @@ impl<'cx, G: Html> FocusNavigator<'cx, G> {
 }
 
 impl<G: Html> FocusNavigator<'static, G> {
-    pub fn new<'cx>(owner_id: String, internal_ref: &'cx NodeRef<G>) -> Self {
+    pub fn new(owner_id: String, internal_ref: &NodeRef<G>) -> Self {
         Self {
             owner_id,
             internal_ref: unsafe { mem::transmute(internal_ref) },
