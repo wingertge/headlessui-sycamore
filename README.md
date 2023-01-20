@@ -14,7 +14,7 @@ Currently implemented components are:
 - [x] Checkbox (Toggle)
 - [x] Disclosure
 - [x] Dialog (Modal)
-- [ ] Popover
+- [x] Popover
 - [x] Radio Group
 - [ ] Tabs
 - [ ] Transition

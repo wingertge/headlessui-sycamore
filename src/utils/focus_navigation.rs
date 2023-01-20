@@ -136,7 +136,7 @@ pub fn focus_match(nodes: NodeList, character: &str) {
     }
 }
 
-fn as_html_element<G: Html>(node: &NodeRef<G>) -> Option<HtmlElement> {
+pub fn as_html_element<G: Html>(node: &NodeRef<G>) -> Option<HtmlElement> {
     node.try_get::<DomNode>()?.to_web_sys().dyn_into().ok()
 }
 
