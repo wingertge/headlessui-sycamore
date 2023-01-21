@@ -5,6 +5,12 @@ use sycamore::{
 };
 use sycamore_utils::ReactiveStr;
 
+macro_rules! class {
+    ($cx: expr, $props: expr) => {
+        $crate::utils::class($cx, &$props.attributes, $props.class)
+    };
+}
+
 mod checkbox;
 mod combobox;
 mod dialog;
@@ -14,6 +20,7 @@ mod menu;
 mod popover;
 mod radio_group;
 mod select;
+mod tabs;
 mod toggle;
 
 pub use checkbox::*;
@@ -25,6 +32,7 @@ pub use menu::*;
 pub use popover::*;
 pub use radio_group::*;
 pub use select::*;
+pub use tabs::*;
 pub use toggle::*;
 
 #[derive(Props)]

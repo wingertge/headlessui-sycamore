@@ -4,7 +4,6 @@ use sycamore::{
     builder::prelude::{button, div},
     prelude::*,
     rt::JsCast,
-    utils::render::insert,
     web::html::ev,
 };
 use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
@@ -93,8 +92,8 @@ pub fn Popover<'cx, G: Html>(cx: Scope<'cx>, props: PopoverProps<'cx, G>) -> Vie
     element.set_attribute("data-sh".into(), "popover".into());
     element.set_dyn_attr(cx, "class", move || class.to_string());
     element.set_dyn_bool(cx, "disabled", move || props.disabled.get());
+    element.set_children(cx, children);
     element.apply_attributes(cx, &props.attributes);
-    insert(cx, element, children, None, None, false);
 
     view
 }
@@ -166,7 +165,8 @@ pub fn PopoverButton<'cx, G: Html>(cx: Scope<'cx>, props: PopoverButtonProps<'cx
     let element = create_ref(cx, view.as_node().unwrap().clone());
 
     element.set_dyn_attr(cx, "class", move || class.to_string());
-    insert(cx, element, children, None, None, false);
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
 
     element.event(cx, ev::click, {
         let disabled = props.disabled.clone();
@@ -192,8 +192,6 @@ pub fn PopoverButton<'cx, G: Html>(cx: Scope<'cx>, props: PopoverButtonProps<'cx
             element.remove_attribute("aria-controls".into());
         }
     });
-
-    element.apply_attributes(cx, &props.attributes);
 
     view
 }
@@ -221,7 +219,8 @@ pub fn PopoverOverlay<'cx, G: Html>(cx: Scope<'cx>, props: PopoverOverlayProps<'
     let element = view.as_node().unwrap();
 
     element.set_dyn_attr(cx, "class", move || class.to_string());
-    insert(cx, element, children, None, None, false);
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
 
     element.set_attribute("data-sh".into(), "popover-overlay".into());
 
@@ -257,55 +256,57 @@ pub fn PopoverPanel<'cx, G: Html>(cx: Scope<'cx>, props: PopoverPanelProps<'cx, 
         }
     });
 
-    if *properties.open.get() {
-        let children = props.children.call(cx);
-        let class = class(cx, &props.attributes, props.class);
+    let children = props.children.call(cx);
+    let class = class(cx, &props.attributes, props.class);
 
-        let view = props.element.call(cx);
-        let element = view.as_node().unwrap();
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
 
-        node.set(element.clone());
+    node.set(element.clone());
 
-        element.set_dyn_attr(cx, "class", move || class.to_string());
-        insert(cx, element, children, None, None, false);
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
 
-        element.set_attribute("id".into(), context.panel_id.clone().into());
-        element.set_attribute("data-sh".into(), "popover-panel".into());
+    element.set_attribute("id".into(), context.panel_id.clone().into());
+    element.set_attribute("data-sh".into(), "popover-panel".into());
 
-        element.event(cx, ev::keydown, {
-            let disabled = props.disabled.clone();
-            move |e: KeyboardEvent| {
-                if !disabled.get() {
-                    match e.key().as_str() {
-                        "Tab" => {
-                            e.prevent_default();
-                            lock_focus(node, e.shift_key());
-                        }
-                        "Escape" => {
-                            properties.open.set(false);
-                        }
-                        _ => {}
+    element.event(cx, ev::keydown, {
+        let disabled = props.disabled.clone();
+        move |e: KeyboardEvent| {
+            if !disabled.get() {
+                match e.key().as_str() {
+                    "Tab" => {
+                        e.prevent_default();
+                        lock_focus(node, e.shift_key());
                     }
-                }
-            }
-        });
-        element.event(cx, ev::focusout, move |e: FocusEvent| {
-            if !*context.hovering.get() {
-                match (as_html_element(node), e.related_target()) {
-                    (_, None) => properties.open.set(false),
-                    (Some(node), related)
-                        if !node
-                            .contains(related.as_ref().and_then(|related| related.dyn_ref())) =>
-                    {
-                        properties.open.set(false)
+                    "Escape" => {
+                        properties.open.set(false);
                     }
                     _ => {}
-                };
+                }
             }
-        });
+        }
+    });
+    element.event(cx, ev::focusout, move |e: FocusEvent| {
+        if !*context.hovering.get() {
+            match (as_html_element(node), e.related_target()) {
+                (_, None) => properties.open.set(false),
+                (Some(node), related)
+                    if !node.contains(related.as_ref().and_then(|related| related.dyn_ref())) =>
+                {
+                    properties.open.set(false)
+                }
+                _ => {}
+            };
+        }
+    });
 
-        view
-    } else {
-        View::empty()
-    }
+    View::new_dyn(cx, move || {
+        if *create_selector(cx, move || *properties.open.get()).get() {
+            view.clone()
+        } else {
+            View::empty()
+        }
+    })
 }

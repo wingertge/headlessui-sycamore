@@ -16,7 +16,7 @@ Currently implemented components are:
 - [x] Dialog (Modal)
 - [x] Popover
 - [x] Radio Group
-- [ ] Tabs
+- [x] Tabs
 - [ ] Transition
 
 Testing has only been done on `Checkbox`, `Disclosure` and `Radio Group`.

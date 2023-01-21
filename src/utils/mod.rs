@@ -5,7 +5,10 @@ mod focus_start_point;
 use std::{borrow::Cow, mem};
 
 pub use focus_start_point::*;
-use sycamore::{prelude::*, utils::apply_attribute};
+use sycamore::{
+    prelude::*,
+    utils::{apply_attribute, render::insert},
+};
 use sycamore_utils::ReactiveStr;
 
 pub fn scoped_children<'a, G: Html, F>(cx: Scope<'a>, children: Children<'a, G>, f: F) -> View<G>
@@ -43,6 +46,9 @@ pub fn get_ref<'cx, G: Html>(cx: Scope<'cx>, attributes: &Attributes<'cx, G>) ->
 }
 
 pub fn as_static<T>(value: &T) -> &'static T {
+    // SAFETY: This function is used to extend lifetimes to static for use in contexts.
+    // Contexts can't outlive the lifetime of the scope so this is safe, they just need to be static
+    // for `TypeId` and related functions to work.
     unsafe { mem::transmute(value) }
 }
 
@@ -59,6 +65,8 @@ pub trait SetDynAttr<G: Html> {
         F: FnMut() -> bool + 'cx;
 
     fn apply_attributes<'cx>(&self, cx: Scope<'cx>, attrs: &Attributes<'cx, G>);
+
+    fn set_children(&self, cx: Scope<'_>, children: View<G>);
 }
 
 impl<G: Html> SetDynAttr<G> for G {
@@ -93,5 +101,9 @@ impl<G: Html> SetDynAttr<G> for G {
         for (name, value) in attrs.drain() {
             apply_attribute(cx, self.clone(), name.clone(), value);
         }
+    }
+
+    fn set_children(&self, cx: Scope<'_>, children: View<G>) {
+        insert(cx, self, children, None, None, false);
     }
 }
