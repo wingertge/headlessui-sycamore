@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use super::{DisclosureProperties, TransitionProp};
+use super::{DisclosureProperties, TransitionContext, TransitionProp};
 
 #[derive(Props)]
 pub struct PopoverProps<'cx, G: Html> {
@@ -306,11 +306,20 @@ pub fn PopoverPanel<'cx, G: Html>(cx: Scope<'cx>, props: PopoverPanelProps<'cx, 
         });
     };
 
-    if let Some(mut transition) = props.transition {
-        let view = transition(cx, show);
-        if let Some(element) = view.as_node() {
-            apply_props(element);
-        }
+    if let Some(transition) = props.transition {
+        let mut view = View::empty();
+        let node_ref = create_node_ref(cx);
+        create_child_scope(cx, |cx| {
+            provide_context(
+                cx,
+                TransitionContext::<G> {
+                    node_ref: as_static(node_ref),
+                },
+            );
+            view = transition(cx, as_static(properties.open));
+        });
+        let element = node_ref.get_raw();
+        apply_props(&element);
         view
     } else {
         let view = props.element.call(cx);

@@ -9,7 +9,7 @@ use crate::{
     FocusNavigator,
 };
 
-use super::TransitionProp;
+use super::{TransitionContext, TransitionProp};
 
 pub struct TabGroupContext {
     owner_id: String,
@@ -268,7 +268,7 @@ pub fn TabPanel<'cx, G: Html>(cx: Scope<'cx>, props: TabPanelProps<'cx, G>) -> V
     let children = props.children.call(cx);
     let class = class!(cx, props);
 
-    let apply_props = |element: &G| {
+    let apply_attributes = |element: &G| {
         element.set_dyn_attr(cx, "class", move || class.to_string());
         element.set_children(cx, children);
         element.apply_attributes(cx, &props.attributes);
@@ -289,16 +289,25 @@ pub fn TabPanel<'cx, G: Html>(cx: Scope<'cx>, props: TabPanelProps<'cx, G>) -> V
         );
     };
 
-    if let Some(mut transition) = props.transition {
-        let view = transition(cx, show);
-        if let Some(element) = view.as_node() {
-            apply_props(element);
-        }
+    if let Some(transition) = props.transition {
+        let mut view = View::empty();
+        let node_ref = create_node_ref(cx);
+        create_child_scope(cx, |cx| {
+            provide_context(
+                cx,
+                TransitionContext::<G> {
+                    node_ref: as_static(node_ref),
+                },
+            );
+            view = transition(cx, as_static(show));
+        });
+        let element = node_ref.get_raw();
+        apply_attributes(&element);
         view
     } else {
         let view = props.element.call(cx);
         let element = view.as_node().unwrap();
-        apply_props(element);
+        apply_attributes(element);
 
         view! { cx,
             (if *show.get() {

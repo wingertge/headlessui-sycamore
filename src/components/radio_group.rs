@@ -13,7 +13,7 @@ use crate::{
     utils::{class, focus_navigator::FocusNavigator, get_ref, scoped_children, SetDynAttr},
 };
 
-use super::{use_headless_select_single, BaseProps, HeadlessSelectSingleOptions, SelectProperties};
+use super::{use_headless_select_single, HeadlessSelectSingleOptions, SelectProperties};
 
 #[derive(Props)]
 pub struct RadioGroupProps<'cx, T, G: Html> {

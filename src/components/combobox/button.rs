@@ -1,10 +1,10 @@
 use super::ComboboxContext;
 use crate::{
     components::DisclosureProperties,
-    utils::{class, get_ref},
+    utils::{class, get_ref, SetDynAttr},
 };
-use sycamore::prelude::*;
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{builder::prelude::button, prelude::*, web::html::ev};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 use web_sys::{KeyboardEvent, MouseEvent};
 
 #[derive(Props)]
@@ -13,6 +13,8 @@ pub struct ComboboxButtonProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = button.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -81,15 +83,25 @@ pub fn ComboboxButton<'cx, G: Html>(cx: Scope<'cx>, props: ComboboxButtonProps<'
         "data-sh",
     ]);
 
-    view! { cx,
-        button(
-            on:keydown = on_key_down, on:click = on_click, id = context.button_id, class = class,
-            on:mouseenter = move |_| context.hovering.set(true), aria-haspopup = "listbox",
-            on:mouseleave = move |_| context.hovering.set(false), aria-controls = context.options_id,
-            disabled = *disabled.get(), aria-expanded = *properties.open.get(), ..props.attributes,
-            data-sh-expanded = *properties.open.get(), data-sh = "listbox-button"
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+    element.set_attribute("data-sh".into(), "combobox-button".into());
+
+    element.set_attribute("id".into(), context.button_id.clone().into());
+    element.set_attribute("aria-haspopup".into(), "listbox".into());
+    element.set_attribute("aria-controls".into(), context.options_id.clone().into());
+    element.set_dyn_bool(cx, "disabled", move || *disabled.get());
+    element.set_dyn_bool(cx, "aria-expanded", move || *properties.open.get());
+    element.set_dyn_bool(cx, "data-sh-expanded", move || *properties.open.get());
+
+    element.event(cx, ev::keydown, on_key_down);
+    element.event(cx, ev::click, on_click);
+    element.event(cx, ev::mouseenter, move |_| context.hovering.set(true));
+    element.event(cx, ev::mouseleave, move |_| context.hovering.set(false));
+
+    view
 }

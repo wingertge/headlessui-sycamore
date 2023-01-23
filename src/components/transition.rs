@@ -14,7 +14,8 @@ use wasm_bindgen::{prelude::Closure, JsCast};
 #[cfg(target_arch = "wasm32")]
 use web_sys::Window;
 
-pub type TransitionProp<'cx, G> = Box<dyn FnMut(Scope<'cx>, &'cx ReadSignal<bool>) -> View<G>>;
+pub type TransitionProp<'cx, G> =
+    Box<dyn FnOnce(BoundedScope<'_, 'cx>, &'cx ReadSignal<bool>) -> View<G> + 'cx>;
 
 #[allow(unused)]
 #[derive(Props)]
@@ -67,6 +68,10 @@ struct Properties {
     after_enter: Option<Box<dyn Fn()>>,
     before_leave: Option<Box<dyn Fn()>>,
     after_leave: Option<Box<dyn Fn()>>,
+}
+
+pub struct TransitionContext<G: Html> {
+    pub node_ref: &'static NodeRef<G>,
 }
 
 #[component]
@@ -211,6 +216,10 @@ pub fn Transition<'cx, G: Html>(cx: Scope<'cx>, props: TransitionProps<'cx, G>) 
     let element = view.as_node().unwrap();
 
     node.set(element.clone());
+
+    if let Some(context) = try_use_context::<TransitionContext<G>>(cx) {
+        context.node_ref.set(element.clone());
+    }
 
     let class = class!(cx, props);
     let children = props.children.call(cx);

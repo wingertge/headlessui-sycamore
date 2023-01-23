@@ -1,11 +1,11 @@
 use std::{collections::HashSet, hash::Hash, mem, rc::Rc};
 
-use sycamore::prelude::*;
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{builder::prelude::div, prelude::*};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 
 use crate::{
     hooks::create_id,
-    utils::{class, scoped_children, FocusStartPoint},
+    utils::{class, scoped_children, FocusStartPoint, SetDynAttr},
 };
 
 mod button;
@@ -41,6 +41,8 @@ where
     toggleable: bool,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -127,11 +129,17 @@ pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
         .attributes
         .exclude_keys(&["data-sh", "id", "aria-labelledby", "disabled"]);
 
-    view! { cx,
-        div(data-sh = "listbox", id = owner_id, aria-labelledby = label_id,
-            disabled = props.disabled.get(), class = class, ..props.attributes
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+    element.set_attribute("data-sh".into(), "listbox".into());
+
+    element.set_attribute("id".into(), owner_id.into());
+    element.set_attribute("aria-labelledby".into(), label_id.into());
+    element.set_dyn_bool(cx, "disabled", move || props.disabled.get());
+
+    view
 }

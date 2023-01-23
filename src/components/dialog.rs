@@ -17,7 +17,7 @@ use crate::{
     },
 };
 
-use super::{BaseProps, DisclosureProperties, TransitionProp};
+use super::{DisclosureProperties, TransitionContext, TransitionProp};
 
 #[derive(Props)]
 pub struct DialogProps<'cx, G: Html> {
@@ -103,11 +103,20 @@ pub fn Dialog<'cx, G: Html>(cx: Scope<'cx>, props: DialogProps<'cx, G>) -> View<
         element.set_attribute("aria-modal".into(), "".into());
     };
 
-    if let Some(mut transition) = props.transition {
-        let view = transition(cx, props.open);
-        if let Some(element) = view.as_node() {
-            apply_attributes(element);
-        }
+    if let Some(transition) = props.transition {
+        let mut view = View::empty();
+        let node_ref = create_node_ref(cx);
+        create_child_scope(cx, |cx| {
+            provide_context(
+                cx,
+                TransitionContext::<G> {
+                    node_ref: as_static(node_ref),
+                },
+            );
+            view = transition(cx, as_static(props.open));
+        });
+        let element = node_ref.get_raw();
+        apply_attributes(&element);
         view
     } else {
         let view = props.element.call(cx);

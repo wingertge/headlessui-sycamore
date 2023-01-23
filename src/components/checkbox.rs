@@ -1,10 +1,14 @@
-use super::{use_headless_toggle, BaseProps, HeadlessToggleContext};
+use super::{use_headless_toggle, HeadlessToggleContext};
 use crate::{
     hooks::create_id,
-    utils::{class, get_ref, scoped_children},
+    utils::{class, get_ref, scoped_children, SetDynAttr},
 };
-use sycamore::prelude::*;
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{
+    builder::prelude::{button, div, label, p},
+    prelude::*,
+    web::html::ev,
+};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 use web_sys::MouseEvent;
 
 #[derive(Props)]
@@ -14,6 +18,8 @@ pub struct ToggleProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -50,15 +56,35 @@ pub fn Checkbox<'cx, G: Html>(cx: Scope<'cx>, props: ToggleProps<'cx, G>) -> Vie
     props.attributes.exclude_keys(&["on:click"]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        div(..props.attributes, class = class, on:click = on_click, data-sh = "checkbox") {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("data-sh".into(), "checkbox".into());
+
+    element.event(cx, ev::click, on_click);
+
+    view
+}
+
+#[derive(Props)]
+pub struct CheckboxDescriptionProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = p.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn CheckboxDescription<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn CheckboxDescription<'cx, G: Html>(
+    cx: Scope<'cx>,
+    props: CheckboxDescriptionProps<'cx, G>,
+) -> View<G> {
     props.attributes.exclude_keys(&["id"]);
 
     let context = use_context::<CheckboxContext>(cx);
@@ -66,12 +92,17 @@ pub fn CheckboxDescription<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G
 
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        p(..props.attributes, class = class, id = context.description_id,
-            data-sh = "checkbox-description") {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("data-sh".into(), "checkbox-description".into());
+    element.set_attribute("id".into(), context.description_id.clone().into());
+
+    view
 }
 
 #[derive(Props)]
@@ -80,6 +111,8 @@ pub struct CheckboxIndicatorProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = button.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -108,30 +141,56 @@ pub fn CheckboxIndicator<'cx, G: Html>(
     ]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        button(..props.attributes, ref = internal_ref, id = context.indicator_id, role = "checkbox",
-            aria-labelledby = context.label_id, aria-describedby = context.description_id,
-            disabled = state.disabled.get(), checked = *state.checked.get(), tabindex = tabindex,
-            aria-checked = state.checked, class = class, data-sh = "checkbox-indicator"
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    internal_ref.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+    element.set_attribute("data-sh".into(), "checkbox-indicator".into());
+
+    element.set_attribute("id".into(), context.indicator_id.clone().into());
+    element.set_attribute("role".into(), "checkbox".into());
+    element.set_attribute("aria-labelledby".into(), context.label_id.clone().into());
+    element.set_attribute("aria-describedby".into(), context.label_id.clone().into());
+    element.set_dyn_bool(cx, "disabled", move || state.disabled.get());
+    element.set_dyn_bool(cx, "checked", move || *state.checked.get());
+    element.set_dyn_attr(cx, "tabindex", move || tabindex.to_string());
+    element.set_dyn_bool(cx, "aria-checked", move || *state.checked.get());
+
+    view
+}
+
+#[derive(Props)]
+pub struct CheckboxLabelProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = label.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn CheckboxLabel<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn CheckboxLabel<'cx, G: Html>(cx: Scope<'cx>, props: CheckboxLabelProps<'cx, G>) -> View<G> {
     let context = use_context::<CheckboxContext>(cx);
 
     let children = props.children.call(cx);
     props.attributes.exclude_keys(&["id", "for"]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        label(..props.attributes, id = context.label_id, for = context.indicator_id, class = class,
-            data-sh = "checkbox-label"
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+    element.set_attribute("data-sh".into(), "checkbox-label".into());
+
+    element.set_attribute("id".into(), context.label_id.clone().into());
+    element.set_attribute("for".into(), context.indicator_id.clone().into());
+
+    view
 }

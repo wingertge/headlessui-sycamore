@@ -1,12 +1,19 @@
 use super::ComboboxContext;
 use crate::{
-    components::{select::SelectProperties, DisclosureProperties},
-    utils::{as_static, class, get_ref},
+    components::{
+        select::SelectProperties, DisclosureProperties, TransitionContext, TransitionProp,
+    },
+    utils::{as_static, class, get_ref, SetDynAttr},
     FocusNavigator,
 };
 use std::hash::Hash;
-use sycamore::{prelude::*, rt::JsCast};
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{
+    builder::prelude::{li, ul},
+    prelude::*,
+    rt::JsCast,
+    web::html::ev,
+};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 use web_sys::{FocusEvent, HtmlElement, KeyboardEvent};
 
 #[derive(Props)]
@@ -15,6 +22,10 @@ pub struct ComboboxOptionsProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default)]
+    transition: Option<TransitionProp<'cx, G>>,
+    #[prop(default = ul.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -68,14 +79,59 @@ pub fn ComboboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
         "disabled",
     ]);
 
-    view! { cx,
-        ul(
-            on:focusout = on_blur, data-sh = "listbox-options", id = context.options_id, role = "listbox",
-            aria-multiselectable = context.multiple, aria-labelledby = context.button_id, ref = internal_ref,
-            aria-orientation = if context.horizontal { "horizontal" } else { "vertical" },
-            tabindex = tabindex, disabled = *disabled.get(), class = class, ..props.attributes
-        ) {
-            (children)
+    let apply_attributes = |element: &G| {
+        internal_ref.set(element.clone());
+
+        element.set_dyn_attr(cx, "class", move || class.to_string());
+        element.set_children(cx, children);
+        element.apply_attributes(cx, &props.attributes);
+        element.set_attribute("data-sh".into(), "combobox-options".into());
+
+        element.set_attribute("id".into(), context.options_id.clone().into());
+        element.set_attribute("role".into(), "listbox".into());
+        element.set_attribute("aria-labelledby".into(), context.button_id.clone().into());
+        element.set_dyn_attr(cx, "tabindex", move || tabindex.to_string());
+        element.set_dyn_bool(cx, "disabled", move || *disabled.get());
+        element.set_dyn_bool(cx, "aria-multiselectable", move || context.multiple);
+        element.set_attribute(
+            "aria-orientation".into(),
+            if context.horizontal {
+                "horizontal"
+            } else {
+                "vertical"
+            }
+            .into(),
+        );
+
+        element.event(cx, ev::focusout, on_blur);
+    };
+
+    if let Some(transition) = props.transition {
+        let mut view = View::empty();
+        let node_ref = create_node_ref(cx);
+        create_child_scope(cx, |cx| {
+            provide_context(
+                cx,
+                TransitionContext::<G> {
+                    node_ref: as_static(node_ref),
+                },
+            );
+            view = transition(cx, as_static(properties.open));
+        });
+        let element = node_ref.get_raw();
+        apply_attributes(&element);
+        view
+    } else {
+        let view = props.element.call(cx);
+        let element = view.as_node().unwrap();
+        apply_attributes(element);
+
+        view! { cx,
+            (if *properties.open.get() {
+                view.clone()
+            } else {
+                View::empty()
+            })
         }
     }
 }
@@ -87,6 +143,8 @@ pub struct ComboboxOptionProps<'cx, T: Eq + Hash + 'static, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = li.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -198,15 +256,28 @@ pub fn ComboboxOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
         "aria-selected",
     ]);
 
-    view! { cx,
-        li(
-            on:keydown = on_key_down, on:click = on_click, on:focus = on_focus, on:blur = on_blur,
-            data-sh = "listbox-option", data-sh-owner = context.owner_id, role = "option", tabindex = -1,
-            ref = node, disabled = *disabled.get(), aria-selected = selected(), class = class,
-            data-sh-selected = selected(), data-sh-active = properties.is_active(value),
-            ..props.attributes
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    node.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+    element.set_attribute("data-sh".into(), "combobox-option".into());
+
+    element.set_attribute("role".into(), "option".into());
+    element.set_attribute("tabindex".into(), "-1".into());
+    element.set_attribute("data-sh-owner".into(), context.owner_id.clone().into());
+    element.set_dyn_bool(cx, "disabled", move || *disabled.get());
+    element.set_dyn_bool(cx, "aria-selected", selected);
+    element.set_dyn_bool(cx, "data-sh-selected", selected);
+    element.set_dyn_bool(cx, "data-sh-active", move || properties.is_active(value));
+
+    element.event(cx, ev::keydown, on_key_down);
+    element.event(cx, ev::click, on_click);
+    element.event(cx, ev::focus, on_focus);
+    element.event(cx, ev::blur, on_blur);
+
+    view
 }

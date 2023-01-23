@@ -10,10 +10,10 @@ use web_sys::{KeyboardEvent, MouseEvent};
 
 use crate::{
     hooks::create_id,
-    utils::{class, get_ref, scoped_children, SetDynAttr},
+    utils::{as_static, class, get_ref, scoped_children, SetDynAttr},
 };
 
-use super::TransitionProp;
+use super::{TransitionContext, TransitionProp};
 
 pub struct DisclosureContext {
     owner_id: String,
@@ -208,11 +208,20 @@ pub fn DisclosurePanel<'cx, G: Html>(
         element.set_attribute("data-sh-owner".into(), context.owner_id.clone().into());
     };
 
-    if let Some(mut transition) = props.transition {
-        let view = transition(cx, properties.open);
-        if let Some(element) = view.as_node() {
-            apply_attributes(element);
-        }
+    if let Some(transition) = props.transition {
+        let mut view = View::empty();
+        let node_ref = create_node_ref(cx);
+        create_child_scope(cx, |cx| {
+            provide_context(
+                cx,
+                TransitionContext::<G> {
+                    node_ref: as_static(node_ref),
+                },
+            );
+            view = transition(cx, as_static(properties.open));
+        });
+        let element = node_ref.get_raw();
+        apply_attributes(&element);
         view
     } else {
         let view = props.element.call(cx);
