@@ -18,7 +18,7 @@ use crate::{
     },
 };
 
-use super::DisclosureProperties;
+use super::{DisclosureProperties, TransitionProp};
 
 #[derive(Props)]
 pub struct PopoverProps<'cx, G: Html> {
@@ -233,6 +233,8 @@ pub fn PopoverOverlay<'cx, G: Html>(cx: Scope<'cx>, props: PopoverOverlayProps<'
 pub struct PopoverPanelProps<'cx, G: Html> {
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
+    #[prop(default)]
+    transition: Option<TransitionProp<'cx, G>>,
     #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,
     #[prop(default, setter(into))]
@@ -245,6 +247,8 @@ pub struct PopoverPanelProps<'cx, G: Html> {
 pub fn PopoverPanel<'cx, G: Html>(cx: Scope<'cx>, props: PopoverPanelProps<'cx, G>) -> View<G> {
     let context: &PopoverContext = use_context(cx);
     let properties: &DisclosureProperties = use_context(cx);
+
+    let show = create_selector(cx, move || *properties.open.get());
 
     let node = get_ref(cx, &props.attributes);
 
@@ -259,54 +263,66 @@ pub fn PopoverPanel<'cx, G: Html>(cx: Scope<'cx>, props: PopoverPanelProps<'cx, 
     let children = props.children.call(cx);
     let class = class(cx, &props.attributes, props.class);
 
-    let view = props.element.call(cx);
-    let element = view.as_node().unwrap();
+    let apply_props = |element: &G| {
+        node.set(element.clone());
 
-    node.set(element.clone());
+        element.set_dyn_attr(cx, "class", move || class.to_string());
+        element.set_children(cx, children);
+        element.apply_attributes(cx, &props.attributes);
 
-    element.set_dyn_attr(cx, "class", move || class.to_string());
-    element.set_children(cx, children);
-    element.apply_attributes(cx, &props.attributes);
+        element.set_attribute("id".into(), context.panel_id.clone().into());
+        element.set_attribute("data-sh".into(), "popover-panel".into());
 
-    element.set_attribute("id".into(), context.panel_id.clone().into());
-    element.set_attribute("data-sh".into(), "popover-panel".into());
-
-    element.event(cx, ev::keydown, {
-        let disabled = props.disabled.clone();
-        move |e: KeyboardEvent| {
-            if !disabled.get() {
-                match e.key().as_str() {
-                    "Tab" => {
-                        e.prevent_default();
-                        lock_focus(node, e.shift_key());
+        element.event(cx, ev::keydown, {
+            let disabled = props.disabled.clone();
+            move |e: KeyboardEvent| {
+                if !disabled.get() {
+                    match e.key().as_str() {
+                        "Tab" => {
+                            e.prevent_default();
+                            lock_focus(node, e.shift_key());
+                        }
+                        "Escape" => {
+                            properties.open.set(false);
+                        }
+                        _ => {}
                     }
-                    "Escape" => {
-                        properties.open.set(false);
-                    }
-                    _ => {}
                 }
             }
-        }
-    });
-    element.event(cx, ev::focusout, move |e: FocusEvent| {
-        if !*context.hovering.get() {
-            match (as_html_element(node), e.related_target()) {
-                (_, None) => properties.open.set(false),
-                (Some(node), related)
-                    if !node.contains(related.as_ref().and_then(|related| related.dyn_ref())) =>
-                {
-                    properties.open.set(false)
-                }
-                _ => {}
-            };
-        }
-    });
+        });
+        element.event(cx, ev::focusout, move |e: FocusEvent| {
+            if !*context.hovering.get() {
+                match (as_html_element(node), e.related_target()) {
+                    (_, None) => properties.open.set(false),
+                    (Some(node), related)
+                        if !node
+                            .contains(related.as_ref().and_then(|related| related.dyn_ref())) =>
+                    {
+                        properties.open.set(false)
+                    }
+                    _ => {}
+                };
+            }
+        });
+    };
 
-    View::new_dyn(cx, move || {
-        if *create_selector(cx, move || *properties.open.get()).get() {
-            view.clone()
-        } else {
-            View::empty()
+    if let Some(mut transition) = props.transition {
+        let view = transition(cx, show);
+        if let Some(element) = view.as_node() {
+            apply_props(element);
         }
-    })
+        view
+    } else {
+        let view = props.element.call(cx);
+        let element = view.as_node().unwrap();
+        apply_props(element);
+
+        view! { cx,
+            (if *show.get() {
+                view.clone()
+            } else {
+                View::empty()
+            })
+        }
+    }
 }

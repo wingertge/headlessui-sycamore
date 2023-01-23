@@ -1,18 +1,29 @@
 use std::cell::RefCell;
 
 use gloo_timers::callback::Timeout;
-use sycamore::{prelude::*, rt::JsCast};
+use sycamore::{builder::prelude::div, prelude::*, rt::JsCast, web::html::ev};
+use sycamore_utils::{DynamicElement, ReactiveStr};
 use web_sys::{HtmlElement, KeyboardEvent};
 
 use crate::{
     hooks::create_id,
-    utils::{as_static, class, focus_navigator::FocusNavigator, get_ref, scoped_children},
+    utils::{
+        as_static, class, focus_navigator::FocusNavigator, get_ref, scoped_children, SetDynAttr,
+    },
 };
 
-use super::BaseProps;
+#[derive(Props)]
+pub struct MenuProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
+}
 
 #[component]
-pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: MenuProps<'cx, G>) -> View<G> {
     let id = create_id();
     let focus_ref = get_ref(cx, &props.attributes);
 
@@ -26,15 +37,34 @@ pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
     props.attributes.exclude_keys(&["id", "role", "ref"]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        div(..props.attributes, id = id, role = "menu", ref = focus_ref, class = class, data-sh = "menu") {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    focus_ref.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("id".into(), id.into());
+    element.set_attribute("role".into(), "menu".into());
+    element.set_attribute("data-sh".into(), "menu".into());
+
+    view
 }
 
-#[component(inline_props)]
-pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+#[derive(Props)]
+pub struct MenuItemProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
+}
+
+#[component]
+pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: MenuItemProps<'cx, G>) -> View<G> {
     let context: &FocusNavigator<'_, G> = as_static(use_context(cx));
 
     let internal_ref = get_ref(cx, &props.attributes);
@@ -99,12 +129,21 @@ pub fn MenuItem<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<
         .exclude_keys(&["data-sh-owner", "role", "tabindex", "ref", "on:keydown"]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        div(
-            ..props.attributes, data-sh-owner = context.owner_id, role = "menuitem", tabindex = -1,
-            ref = internal_ref, on:keydown = on_key_down, class = class, data-sh = "menu-item"
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    internal_ref.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("data-sh-owner".into(), context.owner_id.clone().into());
+    element.set_attribute("role".into(), "menuitem".into());
+    element.set_attribute("data-sh".into(), "menu-item".into());
+    element.set_attribute("tabindex".into(), "-1".into());
+
+    element.event(cx, ev::keydown, on_key_down);
+
+    view
 }

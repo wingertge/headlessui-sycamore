@@ -8,8 +8,11 @@ pub use focus_start_point::*;
 use sycamore::{
     prelude::*,
     utils::{apply_attribute, render::insert},
+    web::html::EventDescriptor,
 };
 use sycamore_utils::ReactiveStr;
+use wasm_bindgen::{prelude::Closure, JsCast, JsValue};
+use web_sys::{AddEventListenerOptions, EventTarget};
 
 pub fn scoped_children<'a, G: Html, F>(cx: Scope<'a>, children: Children<'a, G>, f: F) -> View<G>
 where
@@ -106,4 +109,24 @@ impl<G: Html> SetDynAttr<G> for G {
     fn set_children(&self, cx: Scope<'_>, children: View<G>) {
         insert(cx, self, children, None, None, false);
     }
+}
+
+#[allow(unused)]
+pub fn oneshot_event<'a, Ev: EventDescriptor<JsValue>, F: FnMut(Ev::EventData) + 'a>(
+    element: &DomNode,
+    _ev: Ev,
+    mut handler: F,
+) {
+    let boxed: Box<dyn FnMut(JsValue)> = Box::new(move |ev| handler(ev.into()));
+    let boxed: Box<dyn FnMut(JsValue) + 'static> = unsafe { mem::transmute(boxed) };
+
+    let mut options = AddEventListenerOptions::new();
+    options.once(true);
+
+    let target: EventTarget = element.to_web_sys().unchecked_into();
+    let _ = target.add_event_listener_with_callback_and_add_event_listener_options(
+        Ev::EVENT_NAME,
+        Closure::new(boxed).as_ref().unchecked_ref(),
+        &options,
+    );
 }

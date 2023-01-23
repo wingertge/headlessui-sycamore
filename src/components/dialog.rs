@@ -1,7 +1,11 @@
 use std::mem;
 
-use sycamore::prelude::*;
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{
+    builder::prelude::{div, h2, p},
+    prelude::*,
+    web::html::ev,
+};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 use web_sys::KeyboardEvent;
 
 use crate::{
@@ -9,11 +13,11 @@ use crate::{
     utils::{
         as_static, class,
         focus_navigation::{focus_first, get_focusable_elements, lock_focus},
-        get_ref, scoped_children, FocusStartPoint,
+        get_ref, scoped_children, FocusStartPoint, SetDynAttr,
     },
 };
 
-use super::{BaseProps, DisclosureProperties};
+use super::{BaseProps, DisclosureProperties, TransitionProp};
 
 #[derive(Props)]
 pub struct DialogProps<'cx, G: Html> {
@@ -26,6 +30,10 @@ pub struct DialogProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default)]
+    transition: Option<TransitionProp<'cx, G>>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -82,12 +90,33 @@ pub fn Dialog<'cx, G: Html>(cx: Scope<'cx>, props: DialogProps<'cx, G>) -> View<
         "aria-describedby",
     ]);
 
-    view! { cx,
-        div(..props.attributes, id = owner_id, data-sh = "dialog", role = "dialog", class = class,
-            aria-modal = true, aria-labelledby = title_id, aria-describedby = description_id
-        ) {
+    let apply_attributes = |element: &G| {
+        element.set_dyn_attr(cx, "class", move || class.to_string());
+        element.set_children(cx, children);
+        element.apply_attributes(cx, &props.attributes);
+
+        element.set_attribute("id".into(), owner_id.into());
+        element.set_attribute("data-sh".into(), "dialog".into());
+        element.set_attribute("role".into(), "dialog".into());
+        element.set_attribute("aria-labelledby".into(), title_id.into());
+        element.set_attribute("aria-describedby".into(), description_id.into());
+        element.set_attribute("aria-modal".into(), "".into());
+    };
+
+    if let Some(mut transition) = props.transition {
+        let view = transition(cx, props.open);
+        if let Some(element) = view.as_node() {
+            apply_attributes(element);
+        }
+        view
+    } else {
+        let view = props.element.call(cx);
+        let element = view.as_node().unwrap();
+        apply_attributes(element);
+
+        view! { cx,
             (if *props.open.get() {
-                children.clone()
+                view.clone()
             } else {
                 View::empty()
             })
@@ -95,23 +124,52 @@ pub fn Dialog<'cx, G: Html>(cx: Scope<'cx>, props: DialogProps<'cx, G>) -> View<
     }
 }
 
+#[derive(Props)]
+pub struct DialogDescriptionProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = p.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
+}
+
 #[component]
-pub fn DialogDescription<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn DialogDescription<'cx, G: Html>(
+    cx: Scope<'cx>,
+    props: DialogDescriptionProps<'cx, G>,
+) -> View<G> {
     let context: &DialogContext = use_context(cx);
     let class = class(cx, &props.attributes, props.class);
     let children = props.children.call(cx);
 
     props.attributes.exclude_keys(&["id"]);
 
-    view! { cx,
-        p(..props.attributes, id = context.description_id, data-sh = "dialog-description", class = class) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("id".into(), context.description_id.clone().into());
+    element.set_attribute("data-sh".into(), "dialog-description".into());
+
+    view
+}
+
+#[derive(Props)]
+pub struct DialogOverlayProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = p.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn DialogOverlay<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn DialogOverlay<'cx, G: Html>(cx: Scope<'cx>, props: DialogOverlayProps<'cx, G>) -> View<G> {
     let properties: &DisclosureProperties = use_context(cx);
 
     let on_click = |_| properties.open.set(false);
@@ -120,11 +178,18 @@ pub fn DialogOverlay<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> 
     let children = props.children.call(cx);
     props.attributes.exclude_keys(&["on:click"]);
 
-    view! { cx,
-        div(..props.attributes, data-sh = "dialog-overlay", on:click = on_click, class = class) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("data-sh".into(), "dialog-overlay".into());
+
+    element.event(cx, ev::click, on_click);
+
+    view
 }
 
 #[derive(Props)]
@@ -133,6 +198,8 @@ pub struct DialogPanelProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -172,26 +239,50 @@ pub fn DialogPanel<'cx, G: Html>(cx: Scope<'cx>, props: DialogPanelProps<'cx, G>
     let children = props.children.call(cx);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        div(..props.attributes, data-sh = "dialog-panel", id = context.panel_id, ref = node,
-            class = class, on:keydown = on_key_down
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    node.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("data-sh".into(), "dialog-panel".into());
+    element.set_attribute("id".into(), context.panel_id.clone().into());
+
+    element.event(cx, ev::keydown, on_key_down);
+
+    view
+}
+
+#[derive(Props)]
+pub struct DialogTitleProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = h2.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn DialogTitle<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn DialogTitle<'cx, G: Html>(cx: Scope<'cx>, props: DialogTitleProps<'cx, G>) -> View<G> {
     let context: &DialogContext = use_context(cx);
     let class = class(cx, &props.attributes, props.class);
     let children = props.children.call(cx);
 
     props.attributes.exclude_keys(&["id"]);
 
-    view! { cx,
-        h2(..props.attributes, id = context.title_id, data-sh = "dialog-title", class = class) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("data-sh".into(), "dialog-title".into());
+    element.set_attribute("id".into(), context.title_id.clone().into());
+
+    view
 }

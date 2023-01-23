@@ -9,6 +9,8 @@ use crate::{
     FocusNavigator,
 };
 
+use super::TransitionProp;
+
 pub struct TabGroupContext {
     owner_id: String,
     horizontal: bool,
@@ -246,6 +248,8 @@ pub fn Tab<'cx, G: Html>(cx: Scope<'cx>, props: TabProps<'cx, G>) -> View<G> {
 #[derive(Props)]
 pub struct TabPanelProps<'cx, G: Html> {
     index: u32,
+    #[prop(default)]
+    transition: Option<TransitionProp<'cx, G>>,
     #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,
     #[prop(default, setter(into))]
@@ -259,36 +263,49 @@ pub fn TabPanel<'cx, G: Html>(cx: Scope<'cx>, props: TabPanelProps<'cx, G>) -> V
     let context: &TabGroupContext = use_context(cx);
     let properties: &TabGroupProperties = use_context(cx);
 
+    let show = create_selector(cx, move || *properties.selected_index.get() == props.index);
+
     let children = props.children.call(cx);
     let class = class!(cx, props);
 
-    let view = props.element.call(cx);
-    let element = view.as_node().unwrap();
+    let apply_props = |element: &G| {
+        element.set_dyn_attr(cx, "class", move || class.to_string());
+        element.set_children(cx, children);
+        element.apply_attributes(cx, &props.attributes);
 
-    element.set_dyn_attr(cx, "class", move || class.to_string());
-    element.set_children(cx, children);
-    element.apply_attributes(cx, &props.attributes);
+        element.set_attribute("data-sh".into(), "tab-panel".into());
+        element.set_attribute("role".into(), "tabpanel".into());
+        element.set_dyn_attr(cx, "tabindex", move || {
+            if *properties.selected_index.get() == props.index {
+                "0"
+            } else {
+                "-1"
+            }
+        });
+        element.set_attribute("id".into(), context.id("tab-panel", props.index).into());
+        element.set_attribute(
+            "aria-labelledby".into(),
+            context.id("tab", props.index).into(),
+        );
+    };
 
-    element.set_attribute("data-sh".into(), "tab-panel".into());
-    element.set_attribute("role".into(), "tabpanel".into());
-    element.set_dyn_attr(cx, "tabindex", move || {
-        if *properties.selected_index.get() == props.index {
-            "0"
-        } else {
-            "-1"
+    if let Some(mut transition) = props.transition {
+        let view = transition(cx, show);
+        if let Some(element) = view.as_node() {
+            apply_props(element);
         }
-    });
-    element.set_attribute("id".into(), context.id("tab-panel", props.index).into());
-    element.set_attribute(
-        "aria-labelledby".into(),
-        context.id("tab", props.index).into(),
-    );
+        view
+    } else {
+        let view = props.element.call(cx);
+        let element = view.as_node().unwrap();
+        apply_props(element);
 
-    View::new_dyn(cx, move || {
-        if *create_selector(cx, move || *properties.selected_index.get() == props.index).get() {
-            view.clone()
-        } else {
-            View::empty()
+        view! { cx,
+            (if *show.get() {
+                view.clone()
+            } else {
+                View::empty()
+            })
         }
-    })
+    }
 }

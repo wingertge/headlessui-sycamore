@@ -1,11 +1,16 @@
 use std::{hash::Hash, mem};
-use sycamore::{component::Attributes, prelude::*};
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{
+    builder::prelude::{div, label},
+    component::Attributes,
+    prelude::*,
+    web::html::ev,
+};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 use web_sys::KeyboardEvent;
 
 use crate::{
     hooks::create_id,
-    utils::{class, focus_navigator::FocusNavigator, get_ref, scoped_children},
+    utils::{class, focus_navigator::FocusNavigator, get_ref, scoped_children, SetDynAttr},
 };
 
 use super::{use_headless_select_single, BaseProps, HeadlessSelectSingleOptions, SelectProperties};
@@ -17,6 +22,8 @@ pub struct RadioGroupProps<'cx, T, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -66,45 +73,89 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
         .exclude_keys(&["role", "aria-labelledby", "aria-describedby", "ref"]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        div(..props.attributes, class = class, role = "radiogroup", aria-labelledby = label_id,
-            aria-describedby = description_id, ref = internal_ref, data-sh = "radio-group"
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    internal_ref.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("role".into(), "radiogroup".into());
+    element.set_attribute("aria-labelledby".into(), label_id.into());
+    element.set_attribute("aria-describedby".into(), description_id.into());
+    element.set_attribute("data-sh".into(), "radio-group".into());
+
+    view
+}
+
+#[derive(Props)]
+pub struct RadioGroupLabelProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = label.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn RadioGroupLabel<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
-    props.attributes.exclude_keys(&["id"]);
-    let children = props.children.call(cx);
-    let context = try_use_context::<RadioGroupContext>(cx);
-
-    let class = class(cx, &props.attributes, props.class);
-
-    if let Some(context) = context {
-        view! { cx,
-            label(..props.attributes, class = class, id = context.label_id, data-sh = "radio-group-label") {
-                (children)
-            }
-        }
-    } else {
-        view! { cx, "Missing context" }
-    }
-}
-
-#[component]
-pub fn RadioGroupDescription<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn RadioGroupLabel<'cx, G: Html>(
+    cx: Scope<'cx>,
+    props: RadioGroupLabelProps<'cx, G>,
+) -> View<G> {
     props.attributes.exclude_keys(&["id"]);
     let children = props.children.call(cx);
     let context = use_context::<RadioGroupContext>(cx);
 
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx, div(..props.attributes, class = class, id = context.description_id, data-sh = "radio-group-description") {
-        (children)
-    }}
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("id".into(), context.label_id.clone().into());
+    element.set_attribute("data-sh".into(), "radio-group-label".into());
+
+    view
+}
+
+#[derive(Props)]
+pub struct RadioGroupDescriptionProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
+}
+
+#[component]
+pub fn RadioGroupDescription<'cx, G: Html>(
+    cx: Scope<'cx>,
+    props: RadioGroupDescriptionProps<'cx, G>,
+) -> View<G> {
+    props.attributes.exclude_keys(&["id"]);
+    let children = props.children.call(cx);
+    let context = use_context::<RadioGroupContext>(cx);
+
+    let class = class(cx, &props.attributes, props.class);
+
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("id".into(), context.description_id.clone().into());
+    element.set_attribute("data-sh".into(), "radio-group-description".into());
+
+    view
 }
 
 #[derive(Props)]
@@ -114,6 +165,8 @@ pub struct RadioGroupOptionProps<'cx, T: PartialEq, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -213,14 +266,27 @@ pub fn RadioGroupOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     ]);
     let class = class(cx, &props.attributes, props.class);
 
-    view! { cx,
-        div(..props.attributes, role = "radio", aria-labelledby = label_id,
-            aria-describedby = description_id, ref = internal_ref, on:keydown = on_key_down,
-            on:click = on_click, on:focus = on_focus, on:blur = on_blur, tabindex = tabindex,
-            data-sh-owner = context.owner_id, aria-checked = properties.is_selected(value), class = class,
-            data-sh = "radio-group-option"
-        ) {
-            (children)
-        }
-    }
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    internal_ref.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("role".into(), "radio".into());
+    element.set_attribute("data-sh".into(), "radio-group-option".into());
+    element.set_attribute("aria-labelledby".into(), label_id.into());
+    element.set_attribute("aria-describedby".into(), description_id.into());
+    element.set_attribute("data-sh-owner".into(), context.owner_id.clone().into());
+    element.set_dyn_attr(cx, "tabindex", move || tabindex.to_string());
+    element.set_dyn_bool(cx, "aria-checked", move || properties.is_selected(value));
+
+    element.event(cx, ev::click, on_click);
+    element.event(cx, ev::keydown, on_key_down);
+    element.event(cx, ev::focus, on_focus);
+    element.event(cx, ev::blur, on_blur);
+
+    view
 }

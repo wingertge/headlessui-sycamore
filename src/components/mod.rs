@@ -22,6 +22,7 @@ mod radio_group;
 mod select;
 mod tabs;
 mod toggle;
+mod transition;
 
 pub use checkbox::*;
 pub use combobox::*;
@@ -34,6 +35,7 @@ pub use radio_group::*;
 pub use select::*;
 pub use tabs::*;
 pub use toggle::*;
+pub use transition::*;
 
 #[derive(Props)]
 pub struct BaseProps<'cx, G: Html> {

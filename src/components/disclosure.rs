@@ -1,15 +1,19 @@
 use std::mem;
 
-use sycamore::prelude::*;
-use sycamore_utils::{ReactiveBool, ReactiveStr};
+use sycamore::{
+    builder::prelude::{button, div},
+    prelude::*,
+    web::html::ev,
+};
+use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 use web_sys::{KeyboardEvent, MouseEvent};
 
 use crate::{
     hooks::create_id,
-    utils::{class, get_ref, scoped_children},
+    utils::{class, get_ref, scoped_children, SetDynAttr},
 };
 
-use super::BaseProps;
+use super::TransitionProp;
 
 pub struct DisclosureContext {
     owner_id: String,
@@ -29,6 +33,8 @@ pub struct DisclosureProps<'cx, G: Html> {
     class: ReactiveStr<'cx>,
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
+    #[prop(default = div.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -59,11 +65,18 @@ pub fn Disclosure<'cx, G: Html>(cx: Scope<'cx>, props: DisclosureProps<'cx, G>) 
 
     props.attributes.exclude_keys(&["id"]);
     let class = class(cx, &props.attributes, props.class);
-    view! { cx,
-        div(..props.attributes, id = owner_id, class = class, data-sh = "disclosure") {
-            (children)
-        }
-    }
+
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("id".into(), owner_id.into());
+    element.set_attribute("data-sh".into(), "disclosure".into());
+
+    view
 }
 
 #[derive(Props)]
@@ -72,6 +85,8 @@ pub struct DisclosureButtonProps<'cx, G: Html> {
     class: ReactiveStr<'cx>,
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
+    #[prop(default = button.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -125,6 +140,8 @@ pub fn DisclosureButton<'cx, G: Html>(
         }
     };
 
+    let class = class(cx, &props.attributes, props.class);
+
     props.attributes.exclude_keys(&[
         "id",
         "ref",
@@ -134,32 +151,77 @@ pub fn DisclosureButton<'cx, G: Html>(
         "on:keydown",
         "disabled",
     ]);
-    let class = class(cx, &props.attributes, props.class);
-    view! { cx,
-        button(..props.attributes, id = context.button_id, ref = internal_ref, class = class,
-            aria-expanded = *properties.open.get(), data-sh-expanded = *properties.open.get(),
-            on:click = on_click, on:keydown = key_down, disabled = *disabled.get(),
-            data-sh-owner = context.owner_id, data-sh = "disclosure-button"
-        ) {
-            (children)
-        }
-    }
+
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
+
+    internal_ref.set(element.clone());
+
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
+
+    element.set_attribute("id".into(), context.button_id.clone().into());
+    element.set_attribute("data-sh".into(), "disclosure-button".into());
+    element.set_attribute("data-sh-owner".into(), context.owner_id.clone().into());
+    element.set_dyn_bool(cx, "aria-expanded", move || *properties.open.get());
+    element.set_dyn_bool(cx, "data-sh-expanded", move || *properties.open.get());
+    element.set_dyn_bool(cx, "disabled", move || *disabled.get());
+
+    element.event(cx, ev::click, on_click);
+    element.event(cx, ev::keydown, key_down);
+
+    view
+}
+
+#[derive(Props)]
+pub struct DisclosurePanelProps<'cx, G: Html> {
+    #[prop(default, setter(into))]
+    class: ReactiveStr<'cx>,
+    #[prop(default)]
+    transition: Option<TransitionProp<'cx, G>>,
+    #[prop(default = button.into(), setter(into))]
+    element: DynamicElement<'cx, G>,
+    children: Children<'cx, G>,
+    attributes: Attributes<'cx, G>,
 }
 
 #[component]
-pub fn DisclosurePanel<'cx, G: Html>(cx: Scope<'cx>, props: BaseProps<'cx, G>) -> View<G> {
+pub fn DisclosurePanel<'cx, G: Html>(
+    cx: Scope<'cx>,
+    props: DisclosurePanelProps<'cx, G>,
+) -> View<G> {
     let context: &DisclosureContext = use_context(cx);
     let properties: &DisclosureProperties = use_context(cx);
     let children = props.children.call(cx);
 
     props.attributes.exclude_keys(&["id", "data-sh-owner"]);
     let class = class(cx, &props.attributes, props.class);
-    view! { cx,
-        div(..props.attributes, id = context.panel_id, class = class, data-sh = "disclosure-panel",
-            data-sh-owner = context.owner_id
-        ) {
+
+    let apply_attributes = |element: &G| {
+        element.set_dyn_attr(cx, "class", move || class.to_string());
+        element.set_children(cx, children);
+        element.apply_attributes(cx, &props.attributes);
+
+        element.set_attribute("id".into(), context.panel_id.clone().into());
+        element.set_attribute("data-sh".into(), "disclosure-panel".into());
+        element.set_attribute("data-sh-owner".into(), context.owner_id.clone().into());
+    };
+
+    if let Some(mut transition) = props.transition {
+        let view = transition(cx, properties.open);
+        if let Some(element) = view.as_node() {
+            apply_attributes(element);
+        }
+        view
+    } else {
+        let view = props.element.call(cx);
+        let element = view.as_node().unwrap();
+        apply_attributes(element);
+
+        view! { cx,
             (if *properties.open.get() {
-                children.clone()
+                view.clone()
             } else {
                 View::empty()
             })
