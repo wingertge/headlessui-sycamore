@@ -5,7 +5,8 @@ use crate::{
 };
 use sycamore::{builder::prelude::input, prelude::*, web::html::ev};
 use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
-use web_sys::KeyboardEvent;
+use wasm_bindgen::JsCast;
+use web_sys::{HtmlElement, KeyboardEvent};
 
 #[derive(Props)]
 pub struct ComboboxInputProps<'cx, G: Html> {
@@ -59,6 +60,10 @@ pub fn ComboboxInput<'cx, G: Html>(cx: Scope<'cx>, props: ComboboxInputProps<'cx
         move |_| {
             if !properties_disabled.get() && !disabled.get() {
                 properties.open.set(!*properties.open.get_untracked());
+
+                if let Some(node) = node.try_get::<DomNode>() {
+                    let _ = node.to_web_sys().unchecked_into::<HtmlElement>().focus();
+                }
             }
         }
     };
@@ -84,13 +89,14 @@ pub fn ComboboxInput<'cx, G: Html>(cx: Scope<'cx>, props: ComboboxInputProps<'cx
     let view = props.element.call(cx);
     let element = view.as_node().unwrap();
 
+    node.set(element.clone());
+
     element.set_dyn_attr(cx, "class", move || class.to_string());
     element.apply_attributes(cx, &props.attributes);
     element.set_attribute("data-sh".into(), "combobox-input".into());
 
     element.set_attribute("id".into(), context.input_id.clone().into());
     element.set_attribute("aria-haspopup".into(), "listbox".into());
-    element.set_attribute("aria-controls".into(), context.options_id.clone().into());
     element.set_dyn_bool(cx, "disabled", move || *disabled.get());
     element.set_dyn_bool(cx, "aria-expanded", move || *properties.open.get());
     element.set_dyn_bool(cx, "data-sh-expanded", move || *properties.open.get());

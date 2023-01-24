@@ -17,7 +17,7 @@ fn App<G: Html>(cx: Scope) -> View<G> {
             .to_lowercase();
         let new_opts = all_options
             .iter()
-            .filter(|opt| opt.to_lowercase().starts_with(&query))
+            .filter(|opt| opt.to_lowercase().contains(&query))
             .map(|v| *v)
             .collect();
         options.set(new_opts);
@@ -25,7 +25,7 @@ fn App<G: Html>(cx: Scope) -> View<G> {
 
     view! { cx,
         Combobox(value = value) {
-            ComboboxLabel { "Option" }
+            ComboboxLabel { (value.get().unwrap()) }
             ComboboxInput(bind:value = query)
             ComboboxButton {
                 "Open"

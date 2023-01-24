@@ -233,9 +233,7 @@ pub fn ComboboxOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
             .as_ref()
             .and_then(|node| node.dyn_ref::<HtmlElement>())
         {
-            if *disclosure.open.get_untracked()
-                && properties.is_selected_untracked(value)
-                && !*disabled.get()
+            if *disclosure.open.get() && properties.is_selected_untracked(value) && !*disabled.get()
             {
                 let _ = element.focus();
             }
