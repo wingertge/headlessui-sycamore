@@ -5,7 +5,7 @@ use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 
 use crate::{
     hooks::create_id,
-    utils::{as_static, class, get_ref, scoped_children, FocusStartPoint, SetDynAttr},
+    utils::{class, get_ref, scoped_children, FocusStartPoint, SetDynAttr},
     FocusNavigator,
 };
 
@@ -109,12 +109,9 @@ pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     let node_ref = get_ref(cx, &props.attributes);
     let children = scoped_children(cx, props.children, |cx| {
         provide_context(cx, context);
-        provide_context(
-            cx,
-            FocusNavigator::new(owner_id.clone(), as_static(node_ref)),
-        );
         provide_context(cx, properties);
         provide_context(cx, disclosure_properties);
+        provide_context(cx, FocusNavigator::new(owner_id.clone(), node_ref));
     });
 
     create_effect(cx, move || {

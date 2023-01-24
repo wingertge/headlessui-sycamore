@@ -79,3 +79,42 @@ pub async fn dom_shape_is_correct() {
         Ok(())
     }
 }
+
+#[tokio::test]
+pub async fn searching_works() {
+    dom_test!(test);
+
+    async fn test(c: &mut Client) -> Result<(), Box<dyn Error>> {
+        c.goto("http://localhost:8080").await?;
+        c.wait()
+            .for_element(Locator::Css(r#"div[data-sh="combobox"]"#))
+            .await?;
+        let container_id = container.attr("id").await?.unwrap();
+        c.wait()
+            .for_element(Locator::Css(r#"label[data-sh="combobox-label"]"#))
+            .await?;
+        let input = c
+            .wait()
+            .for_element(Locator::Css(r#"input[data-sh="combobox-input"]"#))
+            .await?;
+        c.wait()
+            .for_element(Locator::Css(r#"button[data-sh="combobox-button"]"#))
+            .await?;
+        input.click().await?;
+
+        c.wait()
+            .for_element(Locator::Css(r#"ul[data-sh="combobox-options"]"#))
+            .await?;
+
+        input.send_keys("he").await?;
+
+        let options = c
+            .find_all(Locator::Css(r#"ul[data-sh="combobox-options"]"#))
+            .await?;
+
+        assert_eq!(options.len(), 1);
+        assert_eq!(options[0].text().await?, "Hello");
+
+        Ok(())
+    }
+}

@@ -45,15 +45,14 @@ pub fn Disclosure<'cx, G: Html>(cx: Scope<'cx>, props: DisclosureProps<'cx, G>) 
     let button_id = create_id();
     let panel_id = create_id();
 
-    let children = scoped_children(cx, props.children, |cx| {
-        provide_context(
-            cx,
-            DisclosureContext {
-                owner_id: owner_id.clone(),
-                button_id,
-                panel_id,
-            },
-        );
+    let context = DisclosureContext {
+        owner_id: owner_id.clone(),
+        button_id,
+        panel_id,
+    };
+
+    let children = scoped_children(cx, props.children, move |cx| {
+        provide_context(cx, context);
         provide_context(
             cx,
             DisclosureProperties {

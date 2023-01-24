@@ -47,7 +47,12 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
     let label_id = create_id();
     let internal_ref = get_ref(cx, &props.attributes);
 
-    let children = scoped_children(cx, props.children, |cx| {
+    let context = RadioGroupContext {
+        description_id: description_id.clone(),
+        label_id: label_id.clone(),
+    };
+
+    let children = scoped_children(cx, props.children, move |cx| {
         provide_context(
             cx,
             FocusNavigator::new(create_id(), unsafe { &*(internal_ref as *const _) }),
@@ -59,13 +64,7 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
                 disabled: unsafe { mem::transmute(props.disabled) },
             },
         );
-        provide_context(
-            cx,
-            RadioGroupContext {
-                description_id: description_id.clone(),
-                label_id: label_id.clone(),
-            },
-        );
+        provide_context(cx, context);
     });
 
     props
@@ -195,14 +194,18 @@ pub fn RadioGroupOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
 
     let description_id = create_id();
     let label_id = create_id();
-    let children = scoped_children(cx, props.children, |cx| {
-        provide_context(
-            cx,
-            RadioGroupContext {
-                label_id: label_id.clone(),
-                description_id: description_id.clone(),
-            },
-        );
+    let children = scoped_children(cx, props.children, {
+        let label_id = label_id.clone();
+        let description_id = description_id.clone();
+        |cx| {
+            provide_context(
+                cx,
+                RadioGroupContext {
+                    label_id,
+                    description_id,
+                },
+            );
+        }
     });
 
     let disabled = create_memo(cx, move || props.disabled.get() || disabled.get());

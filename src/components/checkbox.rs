@@ -35,16 +35,14 @@ pub fn Checkbox<'cx, G: Html>(cx: Scope<'cx>, props: ToggleProps<'cx, G>) -> Vie
     let label_id = create_id();
     let indicator_id = create_id();
     let description_id = create_id();
+    let context = CheckboxContext {
+        label_id: label_id.clone(),
+        indicator_id: indicator_id.clone(),
+        description_id: description_id.clone(),
+    };
 
-    let children = scoped_children(cx, props.children, |cx| {
-        provide_context(
-            cx,
-            CheckboxContext {
-                label_id: label_id.clone(),
-                indicator_id: indicator_id.clone(),
-                description_id: description_id.clone(),
-            },
-        );
+    let children = scoped_children(cx, props.children, move |cx| {
+        provide_context(cx, context);
         provide_context(cx, use_headless_toggle(props.checked, props.disabled));
     });
 
