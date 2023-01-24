@@ -126,13 +126,13 @@ pub fn ComboboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
         let element = view.as_node().unwrap();
         apply_attributes(element);
 
-        view! { cx,
-            (if *properties.open.get() {
+        View::new_dyn(cx, move || {
+            if *properties.open.get() {
                 view.clone()
             } else {
                 View::empty()
-            })
-        }
+            }
+        })
     }
 }
 

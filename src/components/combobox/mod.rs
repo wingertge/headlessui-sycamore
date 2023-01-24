@@ -5,7 +5,8 @@ use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 
 use crate::{
     hooks::create_id,
-    utils::{class, scoped_children, FocusStartPoint, SetDynAttr},
+    utils::{as_static, class, get_ref, scoped_children, FocusStartPoint, SetDynAttr},
+    FocusNavigator,
 };
 
 mod button;
@@ -21,10 +22,7 @@ pub use options::*;
 use super::{DisclosureProperties, SelectProperties, SelectValue};
 
 #[derive(Props)]
-pub struct ComboboxProps<'cx, T: Clone + Eq + Hash + 'static, F, G: Html>
-where
-    F: Fn(bool) + 'cx,
-{
+pub struct ComboboxProps<'cx, T: Clone + Eq + Hash + 'static, G: Html> {
     #[prop(default)]
     value: Option<&'cx Signal<Option<T>>>,
     #[prop(default)]
@@ -36,7 +34,7 @@ where
     #[prop(default)]
     horizontal: bool,
     #[prop(default)]
-    on_disclosure_change: Option<F>,
+    on_disclosure_change: Option<Box<dyn Fn(bool) + 'cx>>,
     #[prop(default)]
     disabled: ReactiveBool<'cx>,
     #[prop(default)]
@@ -61,9 +59,9 @@ pub struct ComboboxContext {
 }
 
 #[component]
-pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
+pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
-    props: ComboboxProps<'cx, T, F, G>,
+    props: ComboboxProps<'cx, T, G>,
 ) -> View<G> {
     let open = props
         .open
@@ -108,8 +106,13 @@ pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>
         return view! { cx, span { "Must provide either 'value' or 'value_multiple'." } };
     };
 
+    let node_ref = get_ref(cx, &props.attributes);
     let children = scoped_children(cx, props.children, |cx| {
         provide_context(cx, context);
+        provide_context(
+            cx,
+            FocusNavigator::new(owner_id.clone(), as_static(node_ref)),
+        );
         provide_context(cx, properties);
         provide_context(cx, disclosure_properties);
     });
@@ -134,6 +137,8 @@ pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>
     let view = props.element.call(cx);
     let element = view.as_node().unwrap();
 
+    node_ref.set(element.clone());
+
     element.set_dyn_attr(cx, "class", move || class.to_string());
     element.set_children(cx, children);
     element.apply_attributes(cx, &props.attributes);
@@ -144,4 +149,7 @@ pub fn Combobox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>
     element.set_dyn_bool(cx, "disabled", move || props.disabled.get());
 
     view
+    /* view! {cx,
+        div() { (children) }
+    } */
 }

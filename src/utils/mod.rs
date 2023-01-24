@@ -1,6 +1,8 @@
 pub mod focus_navigation;
 pub mod focus_navigator;
 mod focus_start_point;
+#[cfg(test)]
+pub mod test;
 
 use std::{borrow::Cow, mem};
 
@@ -107,7 +109,14 @@ impl<G: Html> SetDynAttr<G> for G {
     }
 
     fn set_children(&self, cx: Scope<'_>, children: View<G>) {
-        insert(cx, self, children, None, None, false);
+        insert(
+            cx,
+            self,
+            View::new_dyn(cx, move || children.clone()),
+            None,
+            None,
+            false,
+        );
     }
 }
 
