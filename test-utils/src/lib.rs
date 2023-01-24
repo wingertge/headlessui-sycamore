@@ -1,5 +1,3 @@
-use std::error::Error;
-
 #[macro_export]
 macro_rules! dom_test {
     ($test: expr) => {
