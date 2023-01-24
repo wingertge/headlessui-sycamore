@@ -19,4 +19,5 @@ Currently implemented components are:
 - [x] Tabs
 - [x] Transition
 
-Testing has only been done on `Checkbox`, `Disclosure` and `Radio Group`.
+Manual has only been done on `Checkbox`, `Disclosure` and `Radio Group`.
+`Dropdown` is both manually and automatically tested.
