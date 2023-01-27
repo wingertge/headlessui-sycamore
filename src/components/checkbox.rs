@@ -32,13 +32,10 @@ struct CheckboxContext {
 
 #[component]
 pub fn Checkbox<'cx, G: Html>(cx: Scope<'cx>, props: ToggleProps<'cx, G>) -> View<G> {
-    let label_id = create_id();
-    let indicator_id = create_id();
-    let description_id = create_id();
     let context = CheckboxContext {
-        label_id: label_id.clone(),
-        indicator_id: indicator_id.clone(),
-        description_id: description_id.clone(),
+        label_id: create_id(),
+        indicator_id: create_id(),
+        description_id: create_id(),
     };
 
     let children = scoped_children(cx, props.children, move |cx| {

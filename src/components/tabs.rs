@@ -30,7 +30,6 @@ pub struct TabGroupProperties {
 
 #[derive(Props)]
 pub struct TabGroupProps<'cx, G: Html> {
-    #[prop(default)]
     selected_index: Option<&'cx Signal<u32>>,
     #[prop(default)]
     default_index: u32,
@@ -248,7 +247,6 @@ pub fn Tab<'cx, G: Html>(cx: Scope<'cx>, props: TabProps<'cx, G>) -> View<G> {
 #[derive(Props)]
 pub struct TabPanelProps<'cx, G: Html> {
     index: u32,
-    #[prop(default)]
     transition: Option<TransitionProp<'cx, G>>,
     #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,

@@ -5,7 +5,8 @@ use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
 
 use crate::{
     hooks::create_id,
-    utils::{class, scoped_children, FocusStartPoint, SetDynAttr},
+    utils::{as_static, class, get_ref, scoped_children, FocusStartPoint, SetDynAttr},
+    FocusNavigator,
 };
 
 mod button;
@@ -19,22 +20,16 @@ pub use options::*;
 use super::{DisclosureProperties, SelectProperties, SelectValue};
 
 #[derive(Props)]
-pub struct ListBoxProps<'cx, T: Clone + Eq + Hash + 'static, F, G: Html>
-where
-    F: Fn(bool) + 'cx,
-{
-    #[prop(default)]
+pub struct ListBoxProps<'cx, T: Clone + Eq + Hash + 'static, G: Html> {
     value: Option<&'cx Signal<Option<T>>>,
-    #[prop(default)]
     value_multiple: Option<&'cx Signal<HashSet<T>>>,
-    #[prop(default)]
     open: Option<&'cx Signal<bool>>,
     #[prop(default)]
     default_open: bool,
     #[prop(default)]
     horizontal: bool,
-    #[prop(default)]
-    on_disclosure_change: Option<F>,
+    #[prop(setter(into))]
+    on_disclosure_change: Option<Box<dyn Fn(bool) + 'cx>>,
     #[prop(default)]
     disabled: ReactiveBool<'cx>,
     #[prop(default)]
@@ -58,9 +53,9 @@ pub struct ListboxContext {
 }
 
 #[component]
-pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
+pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
-    props: ListBoxProps<'cx, T, F, G>,
+    props: ListBoxProps<'cx, T, G>,
 ) -> View<G> {
     let open = props
         .open
@@ -106,10 +101,15 @@ pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
         return view! { cx, span { "Must provide either 'value' or 'value_multiple'." } };
     };
 
+    let internal_ref = get_ref(cx, &props.attributes);
     let children = scoped_children(cx, props.children, |cx| {
         provide_context(cx, context);
         provide_context(cx, properties);
         provide_context(cx, disclosure_properties);
+        provide_context(
+            cx,
+            FocusNavigator::new(owner_id.clone(), as_static(internal_ref)),
+        );
     });
 
     create_effect(cx, move || {
@@ -131,6 +131,8 @@ pub fn Listbox<'cx, T: Clone + Eq + Hash + 'static, F: Fn(bool) + 'cx, G: Html>(
 
     let view = props.element.call(cx);
     let element = view.as_node().unwrap();
+
+    internal_ref.set(element.clone());
 
     element.set_dyn_attr(cx, "class", move || class.to_string());
     element.set_children(cx, children);

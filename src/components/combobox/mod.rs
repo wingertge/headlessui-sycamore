@@ -23,17 +23,14 @@ use super::{DisclosureProperties, SelectProperties, SelectValue};
 
 #[derive(Props)]
 pub struct ComboboxProps<'cx, T: Clone + Eq + Hash + 'static, G: Html> {
-    #[prop(default)]
     value: Option<&'cx Signal<Option<T>>>,
-    #[prop(default)]
     value_multiple: Option<&'cx Signal<HashSet<T>>>,
-    #[prop(default)]
     open: Option<&'cx Signal<bool>>,
     #[prop(default)]
     default_open: bool,
     #[prop(default)]
     horizontal: bool,
-    #[prop(default)]
+    #[prop(setter(into))]
     on_disclosure_change: Option<Box<dyn Fn(bool) + 'cx>>,
     #[prop(default)]
     disabled: ReactiveBool<'cx>,

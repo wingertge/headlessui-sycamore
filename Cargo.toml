@@ -27,4 +27,6 @@ members = [
     # Examples
     "examples/.base",
     "examples/combobox",
+    "examples/listbox",
+    "examples/checkbox",
 ]

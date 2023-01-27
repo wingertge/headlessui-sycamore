@@ -22,15 +22,14 @@ use super::{DisclosureProperties, TransitionContext, TransitionProp};
 #[derive(Props)]
 pub struct DialogProps<'cx, G: Html> {
     open: &'cx Signal<bool>,
-    #[prop(default)]
+    #[prop(setter(into))]
     on_open: Option<Box<dyn Fn()>>,
-    #[prop(default)]
+    #[prop(setter(into))]
     on_close: Option<Box<dyn Fn()>>,
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
-    #[prop(default)]
     transition: Option<TransitionProp<'cx, G>>,
     #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,

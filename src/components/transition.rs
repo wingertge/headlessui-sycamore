@@ -37,13 +37,13 @@ pub struct TransitionProps<'cx, G: Html> {
     #[prop(default, setter(into))]
     leave_to: Cow<'static, str>,
 
-    #[prop(default)]
+    #[prop(setter(into))]
     before_enter: Option<Box<dyn Fn()>>,
-    #[prop(default)]
+    #[prop(setter(into))]
     after_enter: Option<Box<dyn Fn()>>,
-    #[prop(default)]
+    #[prop(setter(into))]
     before_leave: Option<Box<dyn Fn()>>,
-    #[prop(default)]
+    #[prop(setter(into))]
     after_leave: Option<Box<dyn Fn()>>,
 
     #[prop(default = div.into(), setter(into))]

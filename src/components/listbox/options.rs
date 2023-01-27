@@ -24,7 +24,6 @@ pub struct ListboxOptionsProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
-    #[prop(default)]
     transition: Option<TransitionProp<'cx, G>>,
     #[prop(default = ul.into(), setter(into))]
     element: DynamicElement<'cx, G>,
@@ -42,7 +41,7 @@ pub fn ListboxOptions<'cx, T: Clone + Hash + Eq + 'static, G: Html>(
     let properties: &DisclosureProperties = use_context(cx);
 
     let internal_ref = get_ref(cx, &props.attributes);
-    let controller = FocusNavigator::new(context.owner_id.clone(), internal_ref);
+    let controller: &FocusNavigator<'cx, G> = use_context(cx);
 
     create_effect(cx, move || {
         if !select_properties.has_selected() {
