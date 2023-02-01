@@ -1,8 +1,6 @@
-use std::mem;
-
 use sycamore::prelude::*;
 
-struct Context(&'static ReadSignal<bool>);
+struct Context(RcSignal<bool>);
 
 pub fn scoped_children<'a, G: Html, F>(cx: Scope<'a>, children: Children<'a, G>, f: F) -> View<G>
 where
@@ -20,10 +18,10 @@ where
 fn Wrapper<'cx, G: Html>(
     cx: Scope<'cx>,
     children: Children<'cx, G>,
-    show: &'cx ReadSignal<bool>,
+    show: RcSignal<bool>,
 ) -> View<G> {
     let children = scoped_children(cx, children, |cx| {
-        provide_context(cx, Context(unsafe { mem::transmute(show) }));
+        provide_context(cx, Context(show));
     });
 
     view! { cx,
@@ -46,11 +44,11 @@ fn Inner<G: Html>(cx: Scope) -> View<G> {
 
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
-    let show = create_signal(cx, false);
+    let show = create_rc_signal(false);
 
     view! { cx,
-        button(on:click = |_| show.set(true)) { "Show" }
-        Wrapper(show = show) {
+        button(on:click = {let show = show.clone(); move |_| show.set(true) }) { "Show" }
+        Wrapper(show = show.clone()) {
             Inner
         }
     }
