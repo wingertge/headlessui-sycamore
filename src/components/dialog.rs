@@ -30,7 +30,6 @@ pub struct DialogProps<'cx, G: Html> {
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
-    transition: Option<TransitionProp<'cx, G>>,
     #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
@@ -89,47 +88,21 @@ pub fn Dialog<'cx, G: Html>(cx: Scope<'cx>, props: DialogProps<'cx, G>) -> View<
         "aria-describedby",
     ]);
 
-    let apply_attributes = |element: &G| {
-        element.set_dyn_attr(cx, "class", move || class.to_string());
-        element.set_children(cx, children);
-        element.apply_attributes(cx, &props.attributes);
+    let view = props.element.call(cx);
+    let element = view.as_node().unwrap();
 
-        element.set_attribute("id".into(), owner_id.into());
-        element.set_attribute("data-sh".into(), "dialog".into());
-        element.set_attribute("role".into(), "dialog".into());
-        element.set_attribute("aria-labelledby".into(), title_id.into());
-        element.set_attribute("aria-describedby".into(), description_id.into());
-        element.set_attribute("aria-modal".into(), "".into());
-    };
+    element.set_dyn_attr(cx, "class", move || class.to_string());
+    element.set_children(cx, children);
+    element.apply_attributes(cx, &props.attributes);
 
-    if let Some(transition) = props.transition {
-        let mut view = View::empty();
-        let node_ref = create_node_ref(cx);
-        create_child_scope(cx, |cx| {
-            provide_context(
-                cx,
-                TransitionContext::<G> {
-                    node_ref: as_static(node_ref),
-                },
-            );
-            view = transition(cx, as_static(props.open));
-        });
-        let element = node_ref.get_raw();
-        apply_attributes(&element);
-        view
-    } else {
-        let view = props.element.call(cx);
-        let element = view.as_node().unwrap();
-        apply_attributes(element);
+    element.set_attribute("id".into(), owner_id.into());
+    element.set_attribute("data-sh".into(), "dialog".into());
+    element.set_attribute("role".into(), "dialog".into());
+    element.set_attribute("aria-labelledby".into(), title_id.into());
+    element.set_attribute("aria-describedby".into(), description_id.into());
+    element.set_attribute("aria-modal".into(), "".into());
 
-        view! { cx,
-            (if *props.open.get() {
-                view.clone()
-            } else {
-                View::empty()
-            })
-        }
-    }
+    view
 }
 
 #[derive(Props)]
@@ -208,6 +181,7 @@ pub struct DialogPanelProps<'cx, G: Html> {
     class: ReactiveStr<'cx>,
     #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,
+    transition: Option<TransitionProp<'cx, G>>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
 }
@@ -247,21 +221,47 @@ pub fn DialogPanel<'cx, G: Html>(cx: Scope<'cx>, props: DialogPanelProps<'cx, G>
     let children = props.children.call(cx);
     let class = class(cx, &props.attributes, props.class);
 
-    let view = props.element.call(cx);
-    let element = view.as_node().unwrap();
+    let apply_attributes = |element: &G| {
+        node.set(element.clone());
 
-    node.set(element.clone());
+        element.set_dyn_attr(cx, "class", move || class.to_string());
+        element.set_children(cx, children);
+        element.apply_attributes(cx, &props.attributes);
 
-    element.set_dyn_attr(cx, "class", move || class.to_string());
-    element.set_children(cx, children);
-    element.apply_attributes(cx, &props.attributes);
+        element.set_attribute("data-sh".into(), "dialog-panel".into());
+        element.set_attribute("id".into(), context.panel_id.clone().into());
 
-    element.set_attribute("data-sh".into(), "dialog-panel".into());
-    element.set_attribute("id".into(), context.panel_id.clone().into());
+        element.event(cx, ev::keydown, on_key_down);
+    };
 
-    element.event(cx, ev::keydown, on_key_down);
+    if let Some(transition) = props.transition {
+        let mut view = View::empty();
+        let node_ref = create_node_ref(cx);
+        create_child_scope(cx, |cx| {
+            provide_context(
+                cx,
+                TransitionContext::<G> {
+                    node_ref: as_static(node_ref),
+                },
+            );
+            view = transition(cx, properties.open);
+        });
+        let element = node_ref.get_raw();
+        apply_attributes(&element);
+        view
+    } else {
+        let view = props.element.call(cx);
+        let element = view.as_node().unwrap();
+        apply_attributes(element);
 
-    view
+        view! { cx,
+            (if *properties.open.get() {
+                view.clone()
+            } else {
+                View::empty()
+            })
+        }
+    }
 }
 
 #[derive(Props)]

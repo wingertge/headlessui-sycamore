@@ -20,6 +20,7 @@ pub type TransitionProp<'cx, G> =
 #[allow(unused)]
 #[derive(Props)]
 pub struct TransitionProps<'cx, G: Html> {
+    #[prop(setter(into))]
     show: ReactiveBool<'cx>,
 
     #[prop(default, setter(into))]

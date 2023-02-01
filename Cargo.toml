@@ -1,32 +1,31 @@
-[package]
-name = "headlessui-sycamore"
-version = "0.1.0"
-edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
-sycamore = { git = "https://github.com/sycamore-rs/sycamore.git" }
-sycamore-utils = { git = "https://github.com/wingertge/sycamore-utils.git" }
-wasm-bindgen = "0.2"
-web-sys = { version = "0.3", features = ["KeyboardEvent", "HtmlElement", "Selection", "AddEventListenerOptions"] }
 gloo-timers = "0.2"
+wasm-bindgen = "0.2"
+
+[dependencies.sycamore]
+git = "https://github.com/sycamore-rs/sycamore.git"
+
+[dependencies.sycamore-utils]
+git = "https://github.com/wingertge/sycamore-utils.git"
+
+[dependencies.web-sys]
+features = ["KeyboardEvent", "HtmlElement", "Selection", "AddEventListenerOptions"]
+version = "0.3"
 
 [dev-dependencies]
-sycamore = { git = "https://github.com/sycamore-rs/sycamore.git", features = ["ssr"] }
 fantoccini = "0.19"
 serde_json = "1"
 tokio = "1"
 
-[workspace]
-resolver = "2"
-members = [
-    ".",
-    "test-utils",
+[dev-dependencies.sycamore]
+features = ["ssr"]
+git = "https://github.com/sycamore-rs/sycamore.git"
 
-    # Examples
-    "examples/.base",
-    "examples/combobox",
-    "examples/listbox",
-    "examples/checkbox",
-]
+[package]
+edition = "2021"
+name = "headlessui-sycamore"
+version = "0.1.0"
+
+[workspace]
+members = [".", "test-utils", "examples/.base", "examples/combobox", "examples/listbox", "examples/checkbox", "examples/dialog", "examples/dyn-view-bug"]
+resolver = "2"
