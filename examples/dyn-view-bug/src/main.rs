@@ -2,30 +2,20 @@ use sycamore::prelude::*;
 
 struct Context(RcSignal<bool>);
 
-pub fn scoped_children<'a, G: Html, F>(cx: Scope<'a>, children: Children<'a, G>, f: F) -> View<G>
-where
-    for<'b> F: FnOnce(Scope<'b>),
-{
-    let mut view = View::empty();
-    create_child_scope(cx, |cx| {
-        f(cx);
-        view = children.call(cx);
-    });
-    view
-}
-
 #[component(inline_props)]
 fn Wrapper<'cx, G: Html>(
     cx: Scope<'cx>,
     children: Children<'cx, G>,
     show: RcSignal<bool>,
 ) -> View<G> {
-    let children = scoped_children(cx, children, |cx| {
+    let mut children2 = View::empty();
+    create_child_scope(cx, |cx| {
         provide_context(cx, Context(show));
+        children2 = children.call(cx);
     });
 
     view! { cx,
-        (children)
+        (children2)
     }
 }
 
