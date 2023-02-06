@@ -1,7 +1,5 @@
 [dependencies]
 console_error_panic_hook = "0.1"
-log = "0.4"
-wasm-logger = "0.2"
 
 [dependencies.headlessui-sycamore]
 path = "../.."
@@ -22,5 +20,5 @@ version = "1"
 
 [package]
 edition = "2021"
-name = "example-dyn-view-bug"
+name = "example-disclosure"
 version = "0.1.0"

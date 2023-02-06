@@ -8,28 +8,27 @@ fn Wrapper<'cx, G: Html>(
     children: Children<'cx, G>,
     show: RcSignal<bool>,
 ) -> View<G> {
-    let mut children2 = View::empty();
-    create_child_scope(cx, |cx| {
-        provide_context(cx, Context(show));
-        children2 = children.call(cx);
-    });
+    let context = create_ref(cx, Context(show));
+    let mut children = Some(children);
 
-    view! { cx,
-        (children2)
-    }
+    View::new_dyn_scoped(cx, move |cx| {
+        let mut view = None;
+        if let Some(children) = children.take() {
+            provide_context_ref(cx, context);
+            view = Some(children.call(cx))
+        }
+        view.unwrap()
+    })
 }
 
 #[component]
 fn Inner<G: Html>(cx: Scope) -> View<G> {
     let context: &Context = use_context(cx);
 
-    view! { cx,
-        (if *context.0.get() {
-            view! { cx, "Test" }
-        } else {
-            View::empty()
-        })
-    }
+    View::new_dyn(cx, move || {
+        context.0.track();
+        View::empty()
+    })
 }
 
 #[component]
@@ -46,6 +45,7 @@ fn App<G: Html>(cx: Scope) -> View<G> {
 
 pub fn main() {
     std::panic::set_hook(Box::new(console_error_panic_hook::hook));
+    wasm_logger::init(wasm_logger::Config::default());
 
     sycamore::render(|cx| view! { cx, App {} })
 }

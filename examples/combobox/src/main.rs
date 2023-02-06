@@ -9,18 +9,13 @@ fn App<G: Html>(cx: Scope) -> View<G> {
     let query = create_signal(cx, String::new());
 
     let all_options = vec!["Hello", "World", "Test"];
-    let options = create_signal(cx, all_options.clone());
-
-    create_effect(cx, move || {
-        let query = create_selector(cx, move || query.get().to_string())
-            .get()
-            .to_lowercase();
-        let new_opts = all_options
+    let options = create_selector(cx, move || query.get()).map(cx, move |query| {
+        let query = query.to_lowercase();
+        all_options
             .iter()
             .filter(|opt| opt.to_lowercase().contains(&query))
             .map(|v| *v)
-            .collect();
-        options.set(new_opts);
+            .collect()
     });
 
     view! { cx,
