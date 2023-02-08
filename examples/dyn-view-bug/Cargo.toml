@@ -7,7 +7,9 @@ wasm-logger = "0.2"
 path = "../.."
 
 [dependencies.sycamore]
+#path = "../../../sycamore/packages/sycamore"
 git = "https://github.com/sycamore-rs/sycamore.git"
+features = ["suspense"]
 
 [dev-dependencies]
 fantoccini = "0.19"

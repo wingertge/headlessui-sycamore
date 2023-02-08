@@ -1,46 +1,24 @@
-use sycamore::prelude::*;
-
-struct Context(RcSignal<bool>);
-
-#[component(inline_props)]
-fn Wrapper<'cx, G: Html>(
-    cx: Scope<'cx>,
-    children: Children<'cx, G>,
-    show: RcSignal<bool>,
-) -> View<G> {
-    let context = create_ref(cx, Context(show));
-    let mut children = Some(children);
-
-    View::new_dyn_scoped(cx, move |cx| {
-        let mut view = None;
-        if let Some(children) = children.take() {
-            provide_context_ref(cx, context);
-            view = Some(children.call(cx))
-        }
-        view.unwrap()
-    })
-}
-
-#[component]
-fn Inner<G: Html>(cx: Scope) -> View<G> {
-    let context: &Context = use_context(cx);
-
-    View::new_dyn(cx, move || {
-        context.0.track();
-        View::empty()
-    })
-}
+use sycamore::{futures::spawn_local, prelude::*};
 
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
     let show = create_rc_signal(false);
 
-    view! { cx,
-        button(on:click = {let show = show.clone(); move |_| show.set(true) }) { "Show" }
-        Wrapper(show = show.clone()) {
-            Inner
-        }
+    // Update without the need for manual interaction
+    {
+        let show = show.clone();
+        spawn_local(async move {
+            show.set(true);
+        });
     }
+
+    View::new_dyn_scoped(cx, move |cx| {
+        let show = show.clone();
+        View::new_dyn(cx, move || {
+            show.track();
+            View::empty()
+        })
+    })
 }
 
 pub fn main() {

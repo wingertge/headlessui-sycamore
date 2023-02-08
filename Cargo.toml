@@ -4,6 +4,7 @@ wasm-bindgen = "0.2"
 
 [dependencies.sycamore]
 git = "https://github.com/sycamore-rs/sycamore.git"
+# path = "../sycamore/packages/sycamore"
 
 [dependencies.sycamore-utils]
 git = "https://github.com/wingertge/sycamore-utils.git"
@@ -20,6 +21,7 @@ tokio = "1"
 [dev-dependencies.sycamore]
 features = ["ssr"]
 git = "https://github.com/sycamore-rs/sycamore.git"
+# path = "../sycamore/packages/sycamore"
 
 [package]
 edition = "2021"
