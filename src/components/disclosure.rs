@@ -178,7 +178,7 @@ pub struct DisclosurePanelProps<'cx, G: Html> {
     #[prop(default, setter(into))]
     class: ReactiveStr<'cx>,
     transition: Option<TransitionProp<'cx, G>>,
-    #[prop(default = button.into(), setter(into))]
+    #[prop(default = div.into(), setter(into))]
     element: DynamicElement<'cx, G>,
     children: Children<'cx, G>,
     attributes: Attributes<'cx, G>,
