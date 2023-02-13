@@ -7,17 +7,8 @@ the feature isn't available yet.
 
 # Progress
 
-Currently implemented components are:
-- [x] Menu (Dropdown)
-- [x] Listbox
-- [x] Combobox
-- [x] Checkbox (Toggle)
-- [x] Disclosure
-- [x] Dialog (Modal)
-- [x] Popover
-- [x] Radio Group
-- [x] Tabs
-- [x] Transition
+All "official" components have been implemented.
+Testing is WIP, so far `Combobox`, `Listbox`, `Disclosure` and `Dialog` are getting automatically tested.
 
-Manual has only been done on `Checkbox`, `Disclosure` and `Radio Group`.
-`Dropdown` is both manually and automatically tested.
+`Dialog` is known broken due to [a bug in sycamore](https://github.com/sycamore-rs/sycamore/issues/572).
+A fix is waiting to be merged.
