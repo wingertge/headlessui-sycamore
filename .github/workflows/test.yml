@@ -49,8 +49,7 @@ jobs:
           key: ${{ runner.os }}-cargo-${{ matrix.rust }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Run tests with default features
-        # Only run tests for sycamore to prevent stray feature flags from other tests.
-        run: cd packages/sycamore && cargo test
+        run: cargo test
 
       - name: Run tests with all features
         if: matrix.rust == '1.63.0'
@@ -63,7 +62,7 @@ jobs:
         run: cargo test --all-features
 
       - name: Run headless browser tests
-        run: cd packages/sycamore && wasm-pack test --firefox --chrome --headless --all-features
+        run: wasm-pack test --firefox --chrome --headless --all-features
         if: always()
 
   clippy:
