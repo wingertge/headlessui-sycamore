@@ -14,9 +14,13 @@ features = ["KeyboardEvent", "HtmlElement", "Selection", "AddEventListenerOption
 version = "0.3"
 
 [dev-dependencies]
-fantoccini = "0.19"
 serde_json = "1"
-tokio = "1"
+wasm-bindgen-test = "0.3"
+test-utils = { path = "test-utils" }
+
+[dev-dependencies.web-sys]
+features = ["KeyboardEvent", "KeyboardEventInit", "HtmlElement", "Selection"]
+version = "0.3"
 
 [dev-dependencies.sycamore]
 features = ["ssr"]
