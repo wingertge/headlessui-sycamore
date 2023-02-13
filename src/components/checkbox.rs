@@ -9,7 +9,7 @@ use sycamore::{
     web::html::ev,
 };
 use sycamore_utils::{DynamicElement, ReactiveBool, ReactiveStr};
-use web_sys::MouseEvent;
+use web_sys::{KeyboardEvent, MouseEvent};
 
 #[derive(Props)]
 pub struct ToggleProps<'cx, G: Html> {
@@ -48,6 +48,20 @@ pub fn Checkbox<'cx, G: Html>(cx: Scope<'cx>, props: ToggleProps<'cx, G>) -> Vie
         props.checked.set(!*props.checked.get_untracked());
     };
 
+    let on_key = |e: KeyboardEvent| {
+        match e.key().as_str() {
+            " " => {
+                e.prevent_default();
+                props.checked.set(!*props.checked.get_untracked());
+            }
+            "Enter" => {
+                // Buttons toggle on enter by default. This isn't desired for checkboxes.
+                e.prevent_default();
+            }
+            _ => {}
+        }
+    };
+
     props.attributes.exclude_keys(&["on:click"]);
     let class = class(cx, &props.attributes, props.class);
 
@@ -61,6 +75,7 @@ pub fn Checkbox<'cx, G: Html>(cx: Scope<'cx>, props: ToggleProps<'cx, G>) -> Vie
     element.set_attribute("data-sh".into(), "checkbox".into());
 
     element.event(cx, ev::click, on_click);
+    element.event(cx, ev::keydown, on_key);
 
     view
 }
@@ -149,7 +164,10 @@ pub fn CheckboxIndicator<'cx, G: Html>(
     element.set_attribute("id".into(), context.indicator_id.clone().into());
     element.set_attribute("role".into(), "checkbox".into());
     element.set_attribute("aria-labelledby".into(), context.label_id.clone().into());
-    element.set_attribute("aria-describedby".into(), context.label_id.clone().into());
+    element.set_attribute(
+        "aria-describedby".into(),
+        context.description_id.clone().into(),
+    );
     element.set_dyn_bool(cx, "disabled", move || state.disabled.get());
     element.set_dyn_bool(cx, "checked", move || *state.checked.get());
     element.set_dyn_attr(cx, "tabindex", move || tabindex.to_string());

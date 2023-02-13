@@ -1,9 +1,18 @@
+use headlessui_sycamore::components::{
+    Checkbox, CheckboxDescription, CheckboxIndicator, CheckboxLabel,
+};
 use sycamore::prelude::*;
 
 #[component]
 fn App<G: Html>(cx: Scope) -> View<G> {
+    let checked = create_signal(cx, false);
+
     view! { cx,
-        "Hello World"
+        Checkbox(checked = checked) {
+            CheckboxIndicator { (if *checked.get() { "✓" } else { "✗" }) }
+            CheckboxLabel { "Checkbox" }
+            CheckboxDescription { "It's a checkbox" }
+        }
     }
 }
 
