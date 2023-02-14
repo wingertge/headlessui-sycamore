@@ -26,6 +26,7 @@ pub struct MenuProps<'cx, G: Html> {
 pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: MenuProps<'cx, G>) -> View<G> {
     let id = create_id();
     let focus_ref = get_ref(cx, &props.attributes);
+    let focus_nav = FocusNavigator::<G>::new(id.clone(), focus_ref);
 
     let children = scoped_children(cx, props.children, {
         let id = id.clone();
@@ -49,6 +50,11 @@ pub fn Menu<'cx, G: Html>(cx: Scope<'cx>, props: MenuProps<'cx, G>) -> View<G> {
     element.set_attribute("id".into(), id.into());
     element.set_attribute("role".into(), "menu".into());
     element.set_attribute("data-sh".into(), "menu".into());
+    element.set_attribute("tabindex".into(), "0".into());
+
+    element.event(cx, ev::focus, move |_| {
+        focus_nav.set_first_checked();
+    });
 
     view
 }

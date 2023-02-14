@@ -8,7 +8,8 @@ the feature isn't available yet.
 # Progress
 
 All "official" components have been implemented.
-Testing is WIP, so far `Combobox`, `Listbox`, `Disclosure`, `Checkbox` and `Dialog` are getting automatically tested.
+Testing is WIP, so far `Combobox`, `Listbox`, `Disclosure`, `Checkbox`, `Menu` and `Dialog` are
+getting automatically tested.
 
 `Dialog` is known broken due to [a bug in sycamore](https://github.com/sycamore-rs/sycamore/issues/572).
 A fix is waiting to be merged.
