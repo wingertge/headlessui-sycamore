@@ -12,7 +12,6 @@ pub fn structure_is_correct() {
         let open = create_signal(cx, false);
 
         let node = view! { cx,
-            button(on:click = |_| open.set(true)) { "Open" }
             Popover(open = open) {
                 PopoverOverlay
                 PopoverPanel { "Panel" }

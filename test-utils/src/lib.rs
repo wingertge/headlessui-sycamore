@@ -88,6 +88,14 @@ pub fn query_component(name: &str) -> Element {
     query(&format!("[data-sh=\"{name}\"]"))
 }
 
+pub fn query_component_in(element: &Element, name: &str) -> Element {
+    let query = format!("[data-sh=\"{name}\"]");
+    element
+        .query_selector(&query)
+        .expect("selectors should be valid")
+        .expect("element to be found that matches the selectors")
+}
+
 /// Query the `Document` for the first `Element` that matches the selectors and
 /// then try to cast it into the generic type `T`.
 ///

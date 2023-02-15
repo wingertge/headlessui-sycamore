@@ -17,7 +17,7 @@ use super::{use_headless_select_single, HeadlessSelectSingleOptions, SelectPrope
 
 #[derive(Props)]
 pub struct RadioGroupProps<'cx, T, G: Html> {
-    value: &'cx Signal<T>,
+    value: &'cx Signal<Option<T>>,
     #[prop(default, setter(into))]
     disabled: ReactiveBool<'cx>,
     #[prop(default, setter(into))]
@@ -33,13 +33,8 @@ pub struct RadioGroupContext {
     label_id: String,
 }
 
-struct RadioGroupValueContext<T: PartialEq + 'static> {
-    value: &'static Signal<T>,
-    disabled: ReactiveBool<'static>,
-}
-
 #[component]
-pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
+pub fn RadioGroup<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     cx: Scope<'cx>,
     props: RadioGroupProps<'cx, T, G>,
 ) -> View<G> {
@@ -51,20 +46,22 @@ pub fn RadioGroup<'cx, T: PartialEq + 'static, G: Html>(
         description_id: description_id.clone(),
         label_id: label_id.clone(),
     };
+    let select_context = use_headless_select_single::<T>(
+        cx,
+        HeadlessSelectSingleOptions {
+            value: unsafe { mem::transmute(props.value) },
+            disabled: unsafe { mem::transmute(props.disabled.clone()) },
+            toggleable: false,
+        },
+    );
 
     let children = scoped_children(cx, props.children, move |cx| {
         provide_context(
             cx,
             FocusNavigator::new(create_id(), unsafe { &*(internal_ref as *const _) }),
         );
-        provide_context(
-            cx,
-            RadioGroupValueContext::<T> {
-                value: unsafe { mem::transmute(props.value) },
-                disabled: unsafe { mem::transmute(props.disabled) },
-            },
-        );
         provide_context(cx, context);
+        provide_context(cx, select_context);
     });
 
     props
@@ -176,19 +173,8 @@ pub fn RadioGroupOption<'cx, T: Clone + Eq + Hash + 'static, G: Html>(
     props: RadioGroupOptionProps<'cx, T, G>,
 ) -> View<G> {
     let context = use_context::<FocusNavigator<G>>(cx);
-    let RadioGroupValueContext::<T> { value, disabled } = use_context(cx);
-    let value = create_memo(cx, move || Some(value.get()));
-    let properties: &SelectProperties<T> = create_ref(
-        cx,
-        use_headless_select_single(
-            cx,
-            HeadlessSelectSingleOptions {
-                value: unsafe { mem::transmute(value) },
-                disabled: unsafe { mem::transmute(props.disabled.clone()) },
-                toggleable: false,
-            },
-        ),
-    );
+    let properties: &SelectProperties<T> = use_context(cx);
+    let disabled = &properties.disabled;
 
     let value = create_ref(cx, props.value);
 
