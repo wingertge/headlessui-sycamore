@@ -33,5 +33,5 @@ name = "headlessui-sycamore"
 version = "0.1.0"
 
 [workspace]
-members = [".", "test-utils", "examples/.base", "examples/combobox", "examples/listbox", "examples/checkbox", "examples/dialog", "examples/dyn-view-bug", "examples/disclosure", "examples/menu"]
+members = [".", "test-utils", "examples/.base", "examples/combobox", "examples/listbox", "examples/checkbox", "examples/dialog", "examples/dyn-view-bug", "examples/disclosure", "examples/menu", "examples/popover", "examples/radio-group"]
 resolver = "2"
