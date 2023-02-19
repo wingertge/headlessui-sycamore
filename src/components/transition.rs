@@ -298,7 +298,7 @@ pub fn Transition<'cx, G: Html>(cx: Scope<'cx>, props: TransitionProps<'cx, G>) 
     element.set_class_name((*class.get()).clone().into());
     element.set_children(cx, children);
     element.apply_attributes(cx, &props.attributes);
-    element.set_attribute("data-sh-transition-id".into(), id.clone().into());
+    element.set_attribute("data-sh-transition-id".into(), id.into());
 
     view! { cx,
         (if *visible.get() {
