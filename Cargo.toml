@@ -1,6 +1,8 @@
 [dependencies]
 gloo-timers = "0.2"
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
 
 [dependencies.sycamore]
 git = "https://github.com/sycamore-rs/sycamore.git"
