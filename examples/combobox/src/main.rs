@@ -25,7 +25,7 @@ fn App<G: Html>(cx: Scope) -> View<G> {
             ComboboxButton {
                 "Open"
             }
-            ComboboxOptions::<&str, G> {
+            ComboboxOptions::<&str, _> {
                 Keyed(iterable = options, view = |cx, option| view! { cx,
                     ComboboxOption(value = option) { (option) }
                 }, key = |option| option.to_string())
