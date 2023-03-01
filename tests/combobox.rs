@@ -138,7 +138,7 @@ pub fn searching_works() {
 
         send_key(&input, "he");
 
-        // TODO: Make this work somehow, it works manually but not in testing
+        // TODO: Make this work somehow, it works manually and with fantoccini but not in wasm-pack
 
         /*         let options = query_component("combobox-options");
 
